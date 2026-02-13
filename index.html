@@ -386,14 +386,16 @@
         // ==================== ADMIN DASHBOARD ====================
         async function loadAdminDashboard() {
             document.getElementById('adminDashboard').classList.remove('hidden');
-            
-            const hospResult = await callAPI('getHospitals');
+
+            const [hospResult, scoreResult] = await Promise.all([
+                callAPI('getHospitals'),
+                callAPI('getAllScores')
+            ]);
+
             if (hospResult.success) {
                 allHospitals = hospResult.hospitals;
                 document.getElementById('totalHospitals').textContent = allHospitals.length;
             }
-
-            const scoreResult = await callAPI('getAllScores');
             if (scoreResult.success) {
                 allScores = scoreResult.scores;
             }
@@ -474,7 +476,11 @@
         async function loadHospitalDashboard(code) {
             document.getElementById('hospitalDashboard').classList.remove('hidden');
 
-            const hospResult = await callAPI('getHospital', { code });
+            const [hospResult, scoreResult] = await Promise.all([
+                callAPI('getHospital', { code }),
+                callAPI('getScores', { hospital_code: code })
+            ]);
+
             if (hospResult.success) {
                 currentHospital = hospResult.hospital;
                 document.getElementById('hospitalName').textContent = currentHospital.name;
@@ -482,7 +488,6 @@
                 document.getElementById('hospitalLevel').textContent = `ระดับ ${currentHospital.level}`;
             }
 
-            const scoreResult = await callAPI('getScores', { hospital_code: code });
             if (scoreResult.success && scoreResult.scores.length > 0) {
                 const latest = scoreResult.scores.sort((a, b) => b.updated_at > a.updated_at ? 1 : -1)[0];
                 displayHospitalScore(latest);
@@ -547,14 +552,14 @@
         }
 
         async function loadBestPractice(level) {
-            const result = await callAPI('getBestPractice', { level });
             const container = document.getElementById('bestPracticeInfo');
-            
+            const result = await callAPI('getBestPractice', { level });
+
             if (result.success && result.bestPractice) {
                 const bp = result.bestPractice;
-                const hospResult = await callAPI('getHospital', { code: bp.hospital_code });
-                const hospName = hospResult.success ? hospResult.hospital.name : bp.hospital_code;
-                
+                // Use hospital name from bestPractice if available, avoid extra API call
+                const hospName = bp.hospital_name || bp.hospital_code;
+
                 container.innerHTML = `
                     <div class="flex items-center gap-4">
                         <div class="text-4xl">🏆</div>
@@ -570,25 +575,16 @@
         }
 
         // ==================== ASSESSMENT FORM ====================
-        async function showAssessmentForm() {
+        function showAssessmentForm() {
             document.getElementById('hospitalDashboard').classList.add('hidden');
             document.getElementById('assessmentForm').classList.remove('hidden');
             document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
-            
-            // Try to load criteria from API first, fallback to embedded
+
+            // Use embedded criteria directly (already has all 33 items)
             if (allCriteria.length === 0) {
-                console.log('Loading criteria from API...');
-                const result = await callAPI('getCriteria');
-                if (result.success && result.criteria && result.criteria.length > 0) {
-                    allCriteria = result.criteria;
-                    console.log('Loaded from API:', allCriteria.length, 'items');
-                } else {
-                    console.log('API failed, using embedded criteria');
-                    allCriteria = EMBEDDED_CRITERIA;
-                    console.log('Using embedded:', allCriteria.length, 'items');
-                }
+                allCriteria = EMBEDDED_CRITERIA;
             }
-            
+
             renderAssessmentItems();
         }
 
