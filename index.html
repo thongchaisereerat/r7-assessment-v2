@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R7 Assessment System - ระบบประเมินมาตรฐานการเงินการคลัง</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        .status {
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .status.loading {
+            background: #fff3cd;
+        }
+        .status.success {
+            background: #d4edda;
+        }
+        .status.error {
+            background: #f8d7da;
+        }
+        #loginForm, #assessmentForm {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 R7 Assessment System</h1>
+        <p class="subtitle">ระบบประเมินมาตรฐานการเงินการคลัง R7</p>
+        
+        <div id="status" class="status hidden"></div>
+        
+        <div id="loginSection">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">ชื่อผู้ใช้:</label>
+                    <input type="text" id="username" required placeholder="กรอกชื่อผู้ใช้">
+                </div>
+                <div class="form-group">
+                    <label for="password">รหัสผ่าน:</label>
+                    <input type="password" id="password" required placeholder="กรอกรหัสผ่าน">
+                </div>
+                <button type="submit">เข้าสู่ระบบ</button>
+            </form>
+        </div>
+        
+        <div id="assessmentSection" class="hidden">
+            <h2 style="text-align: center; margin-bottom: 30px;">ยินดีต้อนรับสู่ระบบประเมิน R7</h2>
+            <p style="text-align: center; margin-bottom: 30px;">ระบบกำลังพัฒนาเพื่อรองรับการประเมินมาตรฐานการเงินการคลังแบบครบวงจร</p>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ IMPORTANT: แก้ไข API_URL ตามที่ระบุในคำแนะนำ
+        const API_URL = 'https://script.google.com/macros/s/AKfycbw1HShbh3nxRg8tZG6W7tt2gMhpZ8YHtdgm6rVlRpKY3maZ74C2UuZR1l0rofxD8ajbIQ/exec';        
+        const statusDiv = document.getElementById('status');
+        const loginSection = document.getElementById('loginSection');
+        const assessmentSection = document.getElementById('assessmentSection');
+        const loginForm = document.getElementById('loginForm');
+        
+        function showStatus(message, type = 'loading') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.classList.remove('hidden');
+        }
+        
+        function hideStatus() {
+            statusDiv.classList.add('hidden');
+        }
+        
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            showStatus('กำลังเข้าสู่ระบบ...', 'loading');
+            
+            try {
+                const response = await fetch(`${API_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('เข้าสู่ระบบสำเร็จ!', 'success');
+                    setTimeout(() => {
+                        loginSection.classList.add('hidden');
+                        assessmentSection.classList.remove('hidden');
+                        hideStatus();
+                    }, 1000);
+                } else {
+                    showStatus(data.error || 'เข้าสู่ระบบไม่สำเร็จ', 'error');
+                }
+            } catch (error) {
+                showStatus('เกิดข้อผิดพลาด: ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+                console.error('Error:', error);
+            }
+        });
+        
+        // แสดงข้อความเมื่อ API_URL ยังไม่ถูกแก้ไข
+        if (API_URL === 'PLACEHOLDER_FOR_WEB_APP_URL') {
+            showStatus('⚠️ กรุณาแก้ไข API_URL ในไฟล์ index.html (บรรทัดที่ 136)', 'error');
+        }
+    </script>
+</body>
+</html>
