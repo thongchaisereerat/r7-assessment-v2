@@ -1,0 +1,6 @@
+node_modules/
+*.js
+!index.html
+*.json
+!package.json
+*.py
