@@ -3,180 +3,840 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>R7 Assessment System - ระบบประเมินมาตรฐานการเงินการคลัง</title>
+    <title>R7 Assessment System v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-        }
-        h1 {
-            color: #667eea;
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 40px;
-            font-size: 1.2em;
-        }
-        .status {
-            padding: 20px;
-            background: #f0f4ff;
-            border-radius: 10px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .status.loading {
-            background: #fff3cd;
-        }
-        .status.success {
-            background: #d4edda;
-        }
-        .status.error {
-            background: #f8d7da;
-        }
-        #loginForm, #assessmentForm {
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        button {
-            width: 100%;
-            padding: 15px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #5568d3;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .hidden {
-            display: none;
-        }
+        .grade-a { background: #22c55e; color: white; }
+        .grade-b { background: #3b82f6; color: white; }
+        .grade-c { background: #eab308; color: white; }
+        .grade-d { background: #ef4444; color: white; }
+        .dim-card { transition: transform 0.2s; }
+        .dim-card:hover { transform: translateY(-2px); }
+        .criteria-box { background: #f0f9ff; border-left: 4px solid #3b82f6; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>🏥 R7 Assessment System</h1>
-        <p class="subtitle">ระบบประเมินมาตรฐานการเงินการคลัง R7</p>
-        
-        <div id="status" class="status hidden"></div>
-        
-        <div id="loginSection">
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">ชื่อผู้ใช้:</label>
-                    <input type="text" id="username" required placeholder="กรอกชื่อผู้ใช้">
-                </div>
-                <div class="form-group">
-                    <label for="password">รหัสผ่าน:</label>
-                    <input type="password" id="password" required placeholder="กรอกรหัสผ่าน">
-                </div>
-                <button type="submit">เข้าสู่ระบบ</button>
-            </form>
+<body class="bg-gray-100 min-h-screen">
+    <!-- API URL -->
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzYRBtTbeZZ_w4yM15PlqNgvAFNU1lj98mZwgpaXqTVPQxkS7SgvyQPVJHNvkUkzT4hNA/exec';
+    </script>
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">📊 R7 Assessment System</h1>
+            <div id="userInfo" class="hidden flex items-center gap-4">
+                <span id="userName" class="text-sm"></span>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm">ออกจากระบบ</button>
+            </div>
         </div>
+    </header>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="flex items-center justify-center min-h-[80vh]">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">เข้าสู่ระบบ</h2>
+            <div id="loginError" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4"></div>
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Username</label>
+                <input type="text" id="username" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="admin หรือ รหัส รพ.">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">Password</label>
+                <input type="password" id="password" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="รหัสผ่าน">
+            </div>
+            <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold">เข้าสู่ระบบ</button>
+            <p class="text-center text-gray-500 mt-4 text-sm">เขตสุขภาพที่ 7</p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden container mx-auto px-4 py-6">
+        <h2 class="text-2xl font-bold mb-6">📊 Admin Dashboard</h2>
         
-        <div id="assessmentSection" class="hidden">
-            <h2 style="text-align: center; margin-bottom: 30px;">ยินดีต้อนรับสู่ระบบประเมิน R7</h2>
-            <p style="text-align: center; margin-bottom: 30px;">ระบบกำลังพัฒนาเพื่อรองรับการประเมินมาตรฐานการเงินการคลังแบบครบวงจร</p>
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow">
+                <div class="text-gray-500 text-sm">จำนวน รพ. ทั้งหมด</div>
+                <div id="totalHospitals" class="text-3xl font-bold text-blue-600">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <div class="text-gray-500 text-sm">Grade A-B</div>
+                <div id="gradeAB" class="text-3xl font-bold text-green-600">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <div class="text-gray-500 text-sm">Grade C</div>
+                <div id="gradeC" class="text-3xl font-bold text-yellow-600">-</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow">
+                <div class="text-gray-500 text-sm">คะแนนเฉลี่ย</div>
+                <div id="avgScore" class="text-3xl font-bold text-purple-600">-</div>
+            </div>
+        </div>
+
+        <!-- Filter & Export -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex flex-wrap gap-4 items-center">
+            <div>
+                <label class="text-gray-600 mr-2">จังหวัด:</label>
+                <select id="filterProvince" onchange="filterTable()" class="border p-2 rounded">
+                    <option value="">ทั้งหมด</option>
+                    <option value="ขอนแก่น">ขอนแก่น</option>
+                    <option value="กาฬสินธุ์">กาฬสินธุ์</option>
+                    <option value="มหาสารคาม">มหาสารคาม</option>
+                    <option value="ร้อยเอ็ด">ร้อยเอ็ด</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-gray-600 mr-2">ระดับ:</label>
+                <select id="filterLevel" onchange="filterTable()" class="border p-2 rounded">
+                    <option value="">ทั้งหมด</option>
+                    <option value="A">A (รพศ.)</option>
+                    <option value="M1">M1</option>
+                    <option value="F2">F2 (รพช.)</option>
+                </select>
+            </div>
+            <button onclick="exportAdminExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded ml-auto">
+                📥 Export Excel
+            </button>
+        </div>
+
+        <!-- Hospital Table -->
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">รหัส</th>
+                        <th class="p-3 text-left">ชื่อ รพ.</th>
+                        <th class="p-3 text-left">จังหวัด</th>
+                        <th class="p-3 text-center">ระดับ</th>
+                        <th class="p-3 text-center">Composite</th>
+                        <th class="p-3 text-center">Grade</th>
+                        <th class="p-3 text-center">รอบล่าสุด</th>
+                    </tr>
+                </thead>
+                <tbody id="hospitalTableBody">
+                    <tr><td colspan="7" class="p-4 text-center text-gray-500">กำลังโหลด...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Hospital Dashboard -->
+    <div id="hospitalDashboard" class="hidden container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Hospital Info -->
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <h3 id="hospitalName" class="text-2xl font-bold text-gray-800 mb-2">-</h3>
+                    <p id="hospitalProvince" class="text-gray-600 mb-1">-</p>
+                    <span id="hospitalLevel" class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">-</span>
+                </div>
+
+                <!-- Score Card -->
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <div class="text-center">
+                        <div class="text-gray-500 mb-2">Composite Score</div>
+                        <div id="hospitalComposite" class="text-5xl font-bold text-blue-600 mb-2">-</div>
+                        <div id="hospitalGrade" class="inline-block px-4 py-2 rounded-full text-lg font-bold">-</div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                    <button onclick="showAssessmentForm()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">
+                        📝 ทำแบบประเมินใหม่
+                    </button>
+                    <button onclick="exportHospitalExcel()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold">
+                        📥 Export Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dimension Scores -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <h4 class="text-lg font-bold mb-4">คะแนนรายมิติ</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="dim-card bg-red-50 p-4 rounded-lg text-center">
+                            <div class="text-red-600 font-bold text-2xl" id="dimRevenue">-</div>
+                            <div class="text-gray-600 text-sm">Revenue (35%)</div>
+                        </div>
+                        <div class="dim-card bg-yellow-50 p-4 rounded-lg text-center">
+                            <div class="text-yellow-600 font-bold text-2xl" id="dimCost">-</div>
+                            <div class="text-gray-600 text-sm">Cost (15%)</div>
+                        </div>
+                        <div class="dim-card bg-blue-50 p-4 rounded-lg text-center">
+                            <div class="text-blue-600 font-bold text-2xl" id="dimDiscipline">-</div>
+                            <div class="text-gray-600 text-sm">Discipline (30%)</div>
+                        </div>
+                        <div class="dim-card bg-green-50 p-4 rounded-lg text-center">
+                            <div class="text-green-600 font-bold text-2xl" id="dimCollection">-</div>
+                            <div class="text-gray-600 text-sm">Collection (15%)</div>
+                        </div>
+                        <div class="dim-card bg-purple-50 p-4 rounded-lg text-center">
+                            <div class="text-purple-600 font-bold text-2xl" id="dimProcess">-</div>
+                            <div class="text-gray-600 text-sm">Process (5%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Best Practice -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h4 class="text-lg font-bold mb-4">🏆 รพ.ต้นแบบ (ระดับเดียวกัน)</h4>
+                    <div id="bestPracticeInfo" class="text-gray-500">กำลังโหลด...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assessment History -->
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <h4 class="text-lg font-bold mb-4">📋 ประวัติการประเมิน</h4>
+            <div id="assessmentHistory" class="text-gray-500">กำลังโหลด...</div>
+        </div>
+    </div>
+
+    <!-- Assessment Form -->
+    <div id="assessmentForm" class="hidden container mx-auto px-4 py-6">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">📝 แบบประเมินมาตรฐานการเงินการคลัง</h3>
+                <button onclick="hideAssessmentForm()" class="text-gray-500 hover:text-gray-700">✕ ปิด</button>
+            </div>
+
+            <!-- Form Header -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div>
+                    <label class="block text-gray-600 mb-1">รอบประเมิน</label>
+                    <select id="assessRound" class="w-full p-2 border rounded">
+                        <option value="1/2568">1/2568 (ครึ่งปีแรก)</option>
+                        <option value="2/2568">2/2568 (ครึ่งปีหลัง)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-600 mb-1">วันที่ประเมิน</label>
+                    <input type="date" id="assessDate" class="w-full p-2 border rounded">
+                </div>
+                <div class="text-center">
+                    <div class="text-gray-600 mb-1">Live Score</div>
+                    <div class="text-3xl font-bold">
+                        <span id="liveComposite" class="text-blue-600">0</span>
+                        <span id="liveGrade" class="ml-2 px-2 py-1 rounded text-sm">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assessment Items -->
+            <div id="assessmentItems">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Save Button -->
+            <div class="mt-6 text-center">
+                <button onclick="saveAssessment()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold text-lg">
+                    💾 บันทึกการประเมิน
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // ⚠️ IMPORTANT: แก้ไข API_URL ตามที่ระบุในคำแนะนำ
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzYRBtTbeZZ_w4yM15PlqNgvAFNU1lj98mZwgpaXqTVPQxkS7SgvyQPVJHNvkUkzT4hNA/exec';        const statusDiv = document.getElementById('status');
-        const loginSection = document.getElementById('loginSection');
-        const assessmentSection = document.getElementById('assessmentSection');
-        const loginForm = document.getElementById('loginForm');
-        
-        function showStatus(message, type = 'loading') {
-            statusDiv.textContent = message;
-            statusDiv.className = `status ${type}`;
-            statusDiv.classList.remove('hidden');
-        }
-        
-        function hideStatus() {
-            statusDiv.classList.add('hidden');
-        }
-        
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // ==================== GLOBAL VARIABLES ====================
+        let currentUser = null;
+        let currentHospital = null;
+        let allHospitals = [];
+        let allScores = [];
+        let allCriteria = [];
+
+        // ==================== API FUNCTIONS ====================
+        async function callAPI(action, params = {}) {
+            const url = new URL(API_URL);
+            url.searchParams.append('action', action);
+            for (let key in params) {
+                url.searchParams.append(key, params[key]);
+            }
             
+            try {
+                const response = await fetch(url);
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function postAPI(data) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        // ==================== AUTH ====================
+        async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            showStatus('กำลังเข้าสู่ระบบ...', 'loading');
-            
-            try {
-                const response = await fetch(`${API_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    showStatus('เข้าสู่ระบบสำเร็จ!', 'success');
-                    setTimeout(() => {
-                        loginSection.classList.add('hidden');
-                        assessmentSection.classList.remove('hidden');
-                        hideStatus();
-                    }, 1000);
-                } else {
-                    showStatus(data.error || 'เข้าสู่ระบบไม่สำเร็จ', 'error');
-                }
-            } catch (error) {
-                showStatus('เกิดข้อผิดพลาด: ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
-                console.error('Error:', error);
+            if (!username || !password) {
+                showLoginError('กรุณากรอก Username และ Password');
+                return;
             }
-        });
-        
-        // แสดงข้อความเมื่อ API_URL ยังไม่ถูกแก้ไข
-        if (API_URL === 'PLACEHOLDER_FOR_WEB_APP_URL') {
-            showStatus('⚠️ กรุณาแก้ไข API_URL ในไฟล์ index.html (บรรทัดที่ 136)', 'error');
+
+            const result = await callAPI('login', { username, password });
+            
+            if (result.success) {
+                currentUser = result.user;
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userName').textContent = `👤 ${currentUser.username} (${currentUser.role})`;
+                
+                if (currentUser.role === 'admin') {
+                    loadAdminDashboard();
+                } else {
+                    loadHospitalDashboard(currentUser.hospital_code);
+                }
+            } else {
+                showLoginError(result.error || 'เข้าสู่ระบบไม่สำเร็จ');
+            }
         }
+
+        function showLoginError(msg) {
+            const el = document.getElementById('loginError');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function logout() {
+            currentUser = null;
+            currentHospital = null;
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('hospitalDashboard').classList.add('hidden');
+            document.getElementById('assessmentForm').classList.add('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+        }
+
+        // ==================== ADMIN DASHBOARD ====================
+        async function loadAdminDashboard() {
+            document.getElementById('adminDashboard').classList.remove('hidden');
+            
+            // Load hospitals
+            const hospResult = await callAPI('getHospitals');
+            if (hospResult.success) {
+                allHospitals = hospResult.hospitals;
+                document.getElementById('totalHospitals').textContent = allHospitals.length;
+            }
+
+            // Load all scores
+            const scoreResult = await callAPI('getAllScores');
+            if (scoreResult.success) {
+                allScores = scoreResult.scores;
+            }
+
+            // Load criteria
+            const critResult = await callAPI('getCriteria');
+            if (critResult.success) {
+                allCriteria = critResult.criteria;
+            }
+
+            updateAdminStats();
+            renderHospitalTable();
+        }
+
+        function updateAdminStats() {
+            // Get latest score for each hospital
+            const latestScores = {};
+            allScores.forEach(s => {
+                const code = s.hospital_code;
+                if (!latestScores[code] || s.updated_at > latestScores[code].updated_at) {
+                    latestScores[code] = s;
+                }
+            });
+
+            let gradeAB = 0, gradeC = 0, totalScore = 0, count = 0;
+            Object.values(latestScores).forEach(s => {
+                const comp = Number(s.composite) || 0;
+                if (comp >= 75) gradeAB++;
+                else if (comp >= 65) gradeC++;
+                totalScore += comp;
+                count++;
+            });
+
+            document.getElementById('gradeAB').textContent = gradeAB;
+            document.getElementById('gradeC').textContent = gradeC;
+            document.getElementById('avgScore').textContent = count > 0 ? Math.round(totalScore / count) : '-';
+        }
+
+        function renderHospitalTable() {
+            const tbody = document.getElementById('hospitalTableBody');
+            const filterProv = document.getElementById('filterProvince').value;
+            const filterLevel = document.getElementById('filterLevel').value;
+
+            // Get latest scores map
+            const latestScores = {};
+            allScores.forEach(s => {
+                const code = s.hospital_code;
+                if (!latestScores[code] || s.updated_at > latestScores[code].updated_at) {
+                    latestScores[code] = s;
+                }
+            });
+
+            let filtered = allHospitals;
+            if (filterProv) filtered = filtered.filter(h => h.province === filterProv);
+            if (filterLevel) filtered = filtered.filter(h => h.level === filterLevel);
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-500">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(h => {
+                const score = latestScores[h.code];
+                const comp = score ? score.composite : '-';
+                const grade = score ? score.grade : '-';
+                const round = score ? score.round : '-';
+                const gradeClass = grade === 'A' ? 'grade-a' : grade === 'B' ? 'grade-b' : grade === 'C' ? 'grade-c' : grade === 'D' ? 'grade-d' : 'bg-gray-200';
+                
+                return `<tr class="border-b hover:bg-gray-50">
+                    <td class="p-3">${h.code}</td>
+                    <td class="p-3 font-medium">${h.name}</td>
+                    <td class="p-3">${h.province}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">${h.level}</span></td>
+                    <td class="p-3 text-center font-bold">${comp}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-1 rounded ${gradeClass}">${grade}</span></td>
+                    <td class="p-3 text-center text-sm">${round}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function filterTable() {
+            renderHospitalTable();
+        }
+
+        // ==================== HOSPITAL DASHBOARD ====================
+        async function loadHospitalDashboard(code) {
+            document.getElementById('hospitalDashboard').classList.remove('hidden');
+
+            // Load hospital info
+            const hospResult = await callAPI('getHospital', { code });
+            if (hospResult.success) {
+                currentHospital = hospResult.hospital;
+                document.getElementById('hospitalName').textContent = currentHospital.name;
+                document.getElementById('hospitalProvince').textContent = `📍 ${currentHospital.province}`;
+                document.getElementById('hospitalLevel').textContent = `ระดับ ${currentHospital.level}`;
+            }
+
+            // Load scores
+            const scoreResult = await callAPI('getScores', { hospital_code: code });
+            if (scoreResult.success && scoreResult.scores.length > 0) {
+                // Get latest score
+                const latest = scoreResult.scores.sort((a, b) => b.updated_at > a.updated_at ? 1 : -1)[0];
+                displayHospitalScore(latest);
+                displayAssessmentHistory(scoreResult.scores);
+            } else {
+                document.getElementById('hospitalComposite').textContent = '-';
+                document.getElementById('hospitalGrade').textContent = 'ยังไม่มีข้อมูล';
+                document.getElementById('hospitalGrade').className = 'inline-block px-4 py-2 rounded-full text-lg bg-gray-200';
+                document.getElementById('assessmentHistory').innerHTML = '<p class="text-gray-500">ยังไม่มีประวัติการประเมิน</p>';
+            }
+
+            // Load criteria
+            const critResult = await callAPI('getCriteria');
+            if (critResult.success) {
+                allCriteria = critResult.criteria;
+            }
+
+            // Load best practice
+            loadBestPractice(currentHospital.level);
+        }
+
+        function displayHospitalScore(score) {
+            document.getElementById('hospitalComposite').textContent = score.composite || '-';
+            
+            const grade = score.grade || '-';
+            const gradeEl = document.getElementById('hospitalGrade');
+            gradeEl.textContent = `Grade ${grade}`;
+            gradeEl.className = 'inline-block px-4 py-2 rounded-full text-lg font-bold ' + 
+                (grade === 'A' ? 'grade-a' : grade === 'B' ? 'grade-b' : grade === 'C' ? 'grade-c' : 'grade-d');
+
+            document.getElementById('dimRevenue').textContent = score.dim_revenue || '-';
+            document.getElementById('dimCost').textContent = score.dim_cost || '-';
+            document.getElementById('dimDiscipline').textContent = score.dim_discipline || '-';
+            document.getElementById('dimCollection').textContent = score.dim_collection || '-';
+            document.getElementById('dimProcess').textContent = score.dim_process || '-';
+        }
+
+        function displayAssessmentHistory(scores) {
+            const container = document.getElementById('assessmentHistory');
+            if (scores.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">ยังไม่มีประวัติการประเมิน</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-2 text-left">รอบ</th>
+                            <th class="p-2 text-left">วันที่</th>
+                            <th class="p-2 text-center">Raw Score</th>
+                            <th class="p-2 text-center">Composite</th>
+                            <th class="p-2 text-center">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${scores.map(s => `
+                            <tr class="border-b">
+                                <td class="p-2">${s.round || '-'}</td>
+                                <td class="p-2">${s.date || '-'}</td>
+                                <td class="p-2 text-center">${s.total_raw || '-'}/150</td>
+                                <td class="p-2 text-center font-bold">${s.composite || '-'}</td>
+                                <td class="p-2 text-center"><span class="px-2 py-1 rounded ${s.grade === 'A' ? 'grade-a' : s.grade === 'B' ? 'grade-b' : s.grade === 'C' ? 'grade-c' : 'grade-d'}">${s.grade || '-'}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function loadBestPractice(level) {
+            const result = await callAPI('getBestPractice', { level });
+            const container = document.getElementById('bestPracticeInfo');
+            
+            if (result.success && result.bestPractice) {
+                const bp = result.bestPractice;
+                // Get hospital name
+                const hospResult = await callAPI('getHospital', { code: bp.hospital_code });
+                const hospName = hospResult.success ? hospResult.hospital.name : bp.hospital_code;
+                
+                container.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="text-4xl">🏆</div>
+                        <div>
+                            <div class="font-bold text-lg">${hospName}</div>
+                            <div class="text-gray-600">Composite: <span class="font-bold text-blue-600">${bp.composite}</span> | Grade: <span class="font-bold">${bp.grade}</span></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<p class="text-gray-500">ยังไม่มีข้อมูล รพ.ต้นแบบในระดับนี้</p>';
+            }
+        }
+
+        // ==================== ASSESSMENT FORM ====================
+        function showAssessmentForm() {
+            document.getElementById('hospitalDashboard').classList.add('hidden');
+            document.getElementById('assessmentForm').classList.remove('hidden');
+            document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
+            renderAssessmentItems();
+        }
+
+        function hideAssessmentForm() {
+            document.getElementById('assessmentForm').classList.add('hidden');
+            document.getElementById('hospitalDashboard').classList.remove('hidden');
+        }
+
+        function renderAssessmentItems() {
+            const container = document.getElementById('assessmentItems');
+            
+            const categories = [
+                { id: 1, name: 'หมวด 1: การนำและการวางแผนการเงิน', color: 'blue' },
+                { id: 2, name: 'หมวด 2: ระบบเวชระเบียน', color: 'green' },
+                { id: 3, name: 'หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ', color: 'purple' },
+                { id: 4, name: 'หมวด 4: แผนธุรกิจ (เลือก 2 จาก 5 ข้อ)', color: 'orange' },
+                { id: 5, name: 'หมวด 5: PP Fee Schedule', color: 'pink' },
+                { id: 6, name: 'หมวด 6: การควบคุมรายจ่าย', color: 'red' }
+            ];
+
+            let html = '';
+            categories.forEach(cat => {
+                const items = allCriteria.filter(c => c.category === cat.id);
+                
+                html += `
+                    <div class="mb-6 border rounded-lg overflow-hidden">
+                        <div class="bg-${cat.color}-100 p-4 font-bold text-${cat.color}-800">${cat.name}</div>
+                        <div class="p-4 space-y-4">
+                `;
+
+                items.forEach(item => {
+                    const itemKey = item.item_code.replace('.', '_');
+                    const isCat4 = cat.id === 4;
+                    const isLevel64 = item.item_code === '6.4';
+                    const showItem = !isLevel64 || (currentHospital && ['M1', 'M2', 'A'].includes(currentHospital.level));
+
+                    if (!showItem) return;
+
+                    html += `
+                        <div class="border-b pb-4" id="item_wrapper_${itemKey}">
+                            <div class="flex items-start gap-4">
+                                ${isCat4 ? `<input type="checkbox" id="cat4_check_${itemKey}" class="mt-1 w-5 h-5" onchange="toggleCat4Item('${itemKey}')">` : ''}
+                                <div class="flex-1">
+                                    <label class="font-medium text-gray-700">${item.item_code} ${item.item_name}</label>
+                                    <div class="mt-2 flex items-center gap-4">
+                                        <select id="score_${itemKey}" class="border p-2 rounded w-32 ${isCat4 ? 'opacity-50' : ''}" 
+                                            onchange="onScoreChange('${itemKey}')" ${isCat4 ? 'disabled' : ''}>
+                                            <option value="">เลือก</option>
+                                            <option value="0">0</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="5">5</option>
+                                        </select>
+                                        <span class="text-gray-400 text-sm">/ 5 คะแนน</span>
+                                    </div>
+                                    <div id="criteria_${itemKey}" class="criteria-box mt-2 p-3 hidden rounded">
+                                        <span class="text-sm text-gray-600"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        function toggleCat4Item(itemKey) {
+            const checkbox = document.getElementById(`cat4_check_${itemKey}`);
+            const select = document.getElementById(`score_${itemKey}`);
+            
+            // Count checked items in cat4
+            const cat4Checks = document.querySelectorAll('[id^="cat4_check_4_"]');
+            const checkedCount = Array.from(cat4Checks).filter(c => c.checked).length;
+
+            if (checkbox.checked && checkedCount > 2) {
+                checkbox.checked = false;
+                alert('เลือกได้เพียง 2 ข้อเท่านั้น');
+                return;
+            }
+
+            select.disabled = !checkbox.checked;
+            select.classList.toggle('opacity-50', !checkbox.checked);
+            if (!checkbox.checked) {
+                select.value = '';
+                document.getElementById(`criteria_${itemKey}`).classList.add('hidden');
+            }
+            
+            updateLiveScore();
+        }
+
+        function onScoreChange(itemKey) {
+            const select = document.getElementById(`score_${itemKey}`);
+            const criteriaBox = document.getElementById(`criteria_${itemKey}`);
+            const score = select.value;
+
+            if (score !== '') {
+                const itemCode = itemKey.replace('_', '.');
+                const item = allCriteria.find(c => c.item_code === itemCode);
+                if (item) {
+                    const criteriaText = item[`score_${score}`] || '';
+                    criteriaBox.innerHTML = `<span class="font-medium text-blue-700">${score} คะแนน:</span> <span class="text-gray-700">${criteriaText}</span>`;
+                    criteriaBox.classList.remove('hidden');
+                }
+            } else {
+                criteriaBox.classList.add('hidden');
+            }
+
+            updateLiveScore();
+        }
+
+        function updateLiveScore() {
+            const data = collectFormData();
+            const dims = calculateDimensions(data);
+            
+            document.getElementById('liveComposite').textContent = dims.composite;
+            
+            const gradeEl = document.getElementById('liveGrade');
+            gradeEl.textContent = dims.grade;
+            gradeEl.className = 'ml-2 px-2 py-1 rounded text-sm font-bold ' +
+                (dims.grade === 'A' ? 'grade-a' : dims.grade === 'B' ? 'grade-b' : dims.grade === 'C' ? 'grade-c' : 'grade-d');
+        }
+
+        function collectFormData() {
+            const data = {
+                hospital_code: currentHospital.code,
+                round: document.getElementById('assessRound').value,
+                date: document.getElementById('assessDate').value,
+                cat4_selected: []
+            };
+
+            // Collect all scores
+            allCriteria.forEach(item => {
+                const itemKey = item.item_code.replace('.', '_');
+                const select = document.getElementById(`score_${itemKey}`);
+                if (select && !select.disabled) {
+                    data[`item_${itemKey}`] = select.value || '';
+                }
+
+                // Check cat4 selections
+                if (item.category === 4) {
+                    const checkbox = document.getElementById(`cat4_check_${itemKey}`);
+                    if (checkbox && checkbox.checked) {
+                        data.cat4_selected.push(item.item_code);
+                    }
+                }
+            });
+
+            data.cat4_selected = data.cat4_selected.join(',');
+            return data;
+        }
+
+        function calculateDimensions(data) {
+            // Revenue: selected cat4 items + 5.1
+            let revenueSum = 0, revenueMax = 15;
+            ['4_1','4_2','4_3','4_4','4_5'].forEach(item => {
+                if (data.cat4_selected.includes(item.replace('_','.'))) {
+                    revenueSum += Number(data['item_' + item] || 0);
+                }
+            });
+            revenueSum += Number(data.item_5_1 || 0);
+
+            // Cost: 6.1-6.5
+            let costSum = 0, costMax = 25;
+            ['6_1','6_2','6_3','6_4','6_5'].forEach(item => {
+                costSum += Number(data['item_' + item] || 0);
+            });
+
+            // Discipline: 1.3-1.6, 3.12, 3.13
+            let discSum = 0, discMax = 30;
+            ['1_3','1_4','1_5','1_6','3_12','3_13'].forEach(item => {
+                discSum += Number(data['item_' + item] || 0);
+            });
+
+            // Collection: 3.7-3.11
+            let collSum = 0, collMax = 25;
+            ['3_7','3_8','3_9','3_10','3_11'].forEach(item => {
+                collSum += Number(data['item_' + item] || 0);
+            });
+
+            // Process
+            let procSum = 0, procMax = 55;
+            ['1_1','1_2','2_1','2_2','3_1','3_2','3_3','3_4','3_5','3_6','3_14'].forEach(item => {
+                procSum += Number(data['item_' + item] || 0);
+            });
+
+            const revenue = Math.round((revenueSum / revenueMax) * 100);
+            const cost = Math.round((costSum / costMax) * 100);
+            const discipline = Math.round((discSum / discMax) * 100);
+            const collection = Math.round((collSum / collMax) * 100);
+            const process = Math.round((procSum / procMax) * 100);
+
+            const composite = Math.round(revenue * 0.35 + cost * 0.15 + discipline * 0.30 + collection * 0.15 + process * 0.05);
+
+            let grade = 'D';
+            if (composite >= 85) grade = 'A';
+            else if (composite >= 75) grade = 'B';
+            else if (composite >= 65) grade = 'C';
+
+            return { revenue, cost, discipline, collection, process, composite, grade };
+        }
+
+        async function saveAssessment() {
+            const data = collectFormData();
+            data.action = 'saveScore';
+
+            // Validate
+            if (!data.date) {
+                alert('กรุณาเลือกวันที่ประเมิน');
+                return;
+            }
+
+            // Check cat4 selection
+            if (data.cat4_selected.split(',').filter(x => x).length !== 2) {
+                alert('กรุณาเลือกข้อประเมินหมวด 4 จำนวน 2 ข้อ');
+                return;
+            }
+
+            const result = await postAPI(data);
+            
+            if (result.success) {
+                alert(`บันทึกสำเร็จ!\n\nComposite Score: ${result.composite}\nGrade: ${result.grade}`);
+                hideAssessmentForm();
+                loadHospitalDashboard(currentHospital.code);
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + (result.error || 'ไม่สามารถบันทึกได้'));
+            }
+        }
+
+        // ==================== EXPORT ====================
+        function exportAdminExcel() {
+            const latestScores = {};
+            allScores.forEach(s => {
+                const code = s.hospital_code;
+                if (!latestScores[code] || s.updated_at > latestScores[code].updated_at) {
+                    latestScores[code] = s;
+                }
+            });
+
+            const data = allHospitals.map(h => {
+                const score = latestScores[h.code] || {};
+                return {
+                    'รหัส': h.code,
+                    'ชื่อ รพ.': h.name,
+                    'จังหวัด': h.province,
+                    'ระดับ': h.level,
+                    'รอบประเมิน': score.round || '-',
+                    'Raw Score': score.total_raw || '-',
+                    'Revenue': score.dim_revenue || '-',
+                    'Cost': score.dim_cost || '-',
+                    'Discipline': score.dim_discipline || '-',
+                    'Collection': score.dim_collection || '-',
+                    'Process': score.dim_process || '-',
+                    'Composite': score.composite || '-',
+                    'Grade': score.grade || '-'
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Hospitals');
+            XLSX.writeFile(wb, 'R7_Assessment_Export.xlsx');
+        }
+
+        async function exportHospitalExcel() {
+            const result = await callAPI('getScores', { hospital_code: currentHospital.code });
+            if (!result.success) return;
+
+            const data = result.scores.map(s => ({
+                'รอบ': s.round,
+                'วันที่': s.date,
+                'Raw Score': s.total_raw,
+                'Revenue': s.dim_revenue,
+                'Cost': s.dim_cost,
+                'Discipline': s.dim_discipline,
+                'Collection': s.dim_collection,
+                'Process': s.dim_process,
+                'Composite': s.composite,
+                'Grade': s.grade
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Scores');
+            XLSX.writeFile(wb, `R7_${currentHospital.code}_Export.xlsx`);
+        }
+
+        // ==================== INIT ====================
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') login();
+        });
     </script>
 </body>
 </html>
