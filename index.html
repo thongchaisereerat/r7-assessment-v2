@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R7 Assessment System v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         .grade-a { background: #22c55e; color: white; }
@@ -15,20 +14,73 @@
         .dim-card { transition: transform 0.2s; }
         .dim-card:hover { transform: translateY(-2px); }
         .criteria-box { background: #f0f9ff; border-left: 4px solid #3b82f6; }
-        .loading { opacity: 0.6; pointer-events: none; }
         .hidden { display: none !important; }
+        .cat-header { border-left: 4px solid; }
+        .cat-1 { border-left-color: #3b82f6; background: #eff6ff; }
+        .cat-2 { border-left-color: #22c55e; background: #f0fdf4; }
+        .cat-3 { border-left-color: #8b5cf6; background: #f5f3ff; }
+        .cat-4 { border-left-color: #f59e0b; background: #fffbeb; }
+        .cat-5 { border-left-color: #ec4899; background: #fdf2f8; }
+        .cat-6 { border-left-color: #ef4444; background: #fef2f2; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <!-- API URL -->
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzYRBtTbeZZ_w4yM15PlqNgvAFNU1lj98mZwgpaXqTVPQxkS7SgvyQPVJHNvkUkzT4hNA/exec';
+        
+        // ==================== EMBEDDED CRITERIA (FALLBACK) ====================
+        const EMBEDDED_CRITERIA = [
+            // หมวด 1: การนำและการวางแผนการเงิน
+            { item_code: "1.1", item_name: "การจัดทำแผนเงินบำรุง", category: 1, dimension: "Process", score_0: "ไม่มีการดำเนินการ", score_1: "มี คกก.จัดทำแผน", score_2: "มี คกก. + ใช้ข้อมูล 3 ปี", score_3: "มีแผนถูกต้อง สอดคล้องกิจกรรม", score_4: "แผนไม่ขาดดุล", score_5: "สอดคล้องยุทธศาสตร์", level_condition: "ALL" },
+            { item_code: "1.2", item_name: "ข้อมูลครบถ้วนตามมาตรฐาน", category: 1, dimension: "Process", score_0: "ไม่มีข้อมูล", score_1: "ข้อมูลไม่ครบทุกหมวด", score_2: "ครบแต่ไม่ถูกต้องบางรายการ", score_3: "ครบถ้วนถูกต้อง", score_4: "มีรายละเอียดแผน", score_5: "วิเคราะห์ได้มีประสิทธิภาพ", level_condition: "ALL" },
+            { item_code: "1.3", item_name: "รายงานประชุมติดตามแผน-ผล", category: 1, dimension: "Discipline", score_0: "ไม่มีการประชุม", score_1: "ประชุมไตรมาสละครั้ง", score_2: "มีประชุม+รายงาน", score_3: "มีรายงานเสนอผู้บริหาร", score_4: "วิเคราะห์ปัญหา เสนอแนวทาง", score_5: "นำไปปฏิบัติ แสดงผลลัพธ์ดีขึ้น", level_condition: "ALL" },
+            { item_code: "1.4", item_name: "ผลดำเนินงานแผนรายรับ-รายจ่าย", category: 1, dimension: "Discipline", score_0: "ไม่มีการติดตาม", score_1: "ติดตามไม่ครบไตรมาส", score_2: "ติดตามครบทุกไตรมาส", score_3: "รายงานผู้บริหาร", score_4: "วิเคราะห์ปัญหา", score_5: "แสดงผลลัพธ์ที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "1.5", item_name: "ระบบบริหารความเสี่ยงทางการเงิน", category: 1, dimension: "Discipline", score_0: "ไม่มีระบบ", score_1: "มีระบบแต่ไม่ดำเนินการ", score_2: "รายงานทุก 3 เดือน", score_3: "รายงานทุก 1 เดือน", score_4: "วิเคราะห์+แนวทางแก้ไข", score_5: "แสดงแนวโน้มที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "1.6", item_name: "ผลการบริหารเจ้าหนี้", category: 1, dimension: "Discipline", score_0: "ไม่มีการบริหาร", score_1: "มี คกก.บริหารเจ้าหนี้", score_2: "มี Flow + ทะเบียนคุม", score_3: "มีรายงาน+แผนแก้ไข", score_4: "เจ้าหนี้ ≤90 วัน ทุกคลัง", score_5: "เจ้าหนี้ ≤90 วัน 100%", level_condition: "ALL" },
+            
+            // หมวด 2: ระบบเวชระเบียน
+            { item_code: "2.1", item_name: "การทบทวนเวชระเบียน OP/IP", category: 2, dimension: "Process", score_0: "ไม่มีการทบทวน", score_1: "มี คกก.MRA", score_2: "มีการทบทวนเป็นระบบ", score_3: "มีรายงานผลทบทวน", score_4: "มีแนวทางแก้ไข", score_5: "แสดงผลลัพธ์ที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "2.2", item_name: "คุณภาพข้อมูลและสารสนเทศ", category: 2, dimension: "Process", score_0: "ไม่มีระบบ", score_1: "มีระบบตรวจสอบ", score_2: "ปิด Visit ครบถ้วน", score_3: "Authen + PDX ครบ", score_4: "สถานะสมบูรณ์ ≥95%", score_5: "สถานะสมบูรณ์ ≥98%", level_condition: "ALL" },
+            
+            // หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ
+            { item_code: "3.1", item_name: "กลยุทธ์งานจัดเก็บรายได้ (Strategy)", category: 3, dimension: "Process", score_0: "ไม่มีกลยุทธ์", score_1: "มีแผนงาน", score_2: "มีตัวชี้วัด", score_3: "มี Action Plan", score_4: "ติดตามผลทุกไตรมาส", score_5: "บรรลุเป้าหมาย", level_condition: "ALL" },
+            { item_code: "3.2", item_name: "โครงสร้างศูนย์จัดเก็บ (Structure)", category: 3, dimension: "Process", score_0: "ไม่มีโครงสร้าง", score_1: "มี คกก.ศูนย์จัดเก็บ", score_2: "มี Flowchart", score_3: "Flowchart ครบ 5 กระบวนการ", score_4: "ประชุมทุกไตรมาส", score_5: "มีรายงานและติดตาม", level_condition: "ALL" },
+            { item_code: "3.3", item_name: "ระบบงานจัดเก็บ (System)", category: 3, dimension: "Process", score_0: "ไม่มีระบบ", score_1: "มีระบบ Software", score_2: "ปฏิบัติตาม Flow", score_3: "ปฏิบัติครบถ้วน", score_4: "เรียกเก็บทันเวลา (ไม่ครบ 3 กองทุน)", score_5: "เรียกเก็บทันเวลา ครบ 3 กองทุน", level_condition: "ALL" },
+            { item_code: "3.4", item_name: "บุคลากร (Staff & Skill)", category: 3, dimension: "Process", score_0: "ไม่มีการพัฒนา", score_1: "มีแผนพัฒนา", score_2: "อบรมปีละ 1 ครั้ง", score_3: "อบรมปีละ 2 ครั้ง", score_4: "นำความรู้มาปรับใช้", score_5: "แสดงผลลัพธ์ที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "3.5", item_name: "การบันทึกกิจกรรมการรักษา (Care)", category: 3, dimension: "Process", score_0: "ไม่มีการตรวจสอบ", score_1: "มีแพทย์/พยาบาล Auditor", score_2: "สุ่มตรวจเวชระเบียน", score_3: "ส่งข้อมูลให้บัญชี <วันที่ 10", score_4: "มีการวิเคราะห์", score_5: "แสดงผลลัพธ์ที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "3.6", item_name: "การให้รหัส ICD (Code)", category: 3, dimension: "Process", score_0: "ไม่มี Coder", score_1: "มี Coder", score_2: "มีแพทย์ Auditor", score_3: "บันทึก IP ≤30 วัน", score_4: "อบรม Coder ปีละ 1 ครั้ง", score_5: "แสดงผลลัพธ์ที่ดีขึ้น", level_condition: "ALL" },
+            { item_code: "3.7", item_name: "การตั้งลูกหนี้ค่ารักษา", category: 3, dimension: "Collection", score_0: "ไม่มีการตั้งลูกหนี้", score_1: "ตั้งลูกหนี้ไม่ครบ", score_2: "ตั้งลูกหนี้ครบทุกสิทธิ์", score_3: "ตรงกับบัญชี", score_4: "วิเคราะห์อายุลูกหนี้", score_5: "ลูกหนี้ ≤90 วัน", level_condition: "ALL" },
+            { item_code: "3.8", item_name: "การส่งข้อมูลเรียกเก็บ (Claim)", category: 3, dimension: "Collection", score_0: "ไม่มีการส่ง", score_1: "ส่งไม่ทันเวลา", score_2: "ส่งทันเวลาบางกองทุน", score_3: "ส่งทันเวลาทุกกองทุน", score_4: "ไม่ถูกปรับ", score_5: "ได้รับชดเชยครบ", level_condition: "ALL" },
+            { item_code: "3.9", item_name: "การจัดการข้อมูล C/D/V", category: 3, dimension: "Collection", score_0: "ไม่มีการจัดการ", score_1: "มีทะเบียนคุม", score_2: "ทะเบียนเป็นปัจจุบัน", score_3: "มีการแก้ไข", score_4: "มีมาตรการป้องกัน", score_5: "C/D/V ลดลง", level_condition: "ALL" },
+            { item_code: "3.10", item_name: "การติดตามเงินโอน REP/Statement", category: 3, dimension: "Collection", score_0: "ไม่มีการติดตาม", score_1: "ติดตามบางกองทุน", score_2: "ติดตามทุกกองทุน", score_3: "ตัดลูกหนี้ถูกต้อง", score_4: "วิเคราะห์ส่วนต่าง", score_5: "ได้รับเงินครบถ้วน", level_condition: "ALL" },
+            { item_code: "3.11", item_name: "การรายงานข้อมูลให้บัญชี", category: 3, dimension: "Collection", score_0: "ไม่มีการรายงาน", score_1: "รายงานไม่ครบ", score_2: "รายงานครบทุกเดือน", score_3: "ส่งภายในวันที่ 5", score_4: "กระทบยอดทุกเดือน", score_5: "ข้อมูลตรงกัน 100%", level_condition: "ALL" },
+            { item_code: "3.12", item_name: "ตัวชี้วัดแผนการเงิน", category: 3, dimension: "Discipline", score_0: "ไม่มีตัวชี้วัด", score_1: "มีตัวชี้วัด", score_2: "มีผู้รับผิดชอบ", score_3: "รายงานใน CFO", score_4: "วิเคราะห์แนวโน้ม", score_5: "บรรลุเป้าหมาย", level_condition: "ALL" },
+            { item_code: "3.13", item_name: "TPS Score", category: 3, dimension: "Discipline", score_0: "ไม่มีข้อมูล", score_1: "TPS ระดับ F", score_2: "TPS ระดับ D", score_3: "TPS ระดับ C + วิเคราะห์", score_4: "TPS ระดับ A/B + วิเคราะห์", score_5: "รักษา A/B + สภาพคล่องดี", level_condition: "ALL" },
+            { item_code: "3.14", item_name: "ระบบสารสนเทศศูนย์จัดเก็บ", category: 3, dimension: "Process", score_0: "ไม่มีระบบ", score_1: "มี Software", score_2: "เชื่อมโยง HIS", score_3: "รายงานได้ทันเวลา", score_4: "มีความปลอดภัยข้อมูล", score_5: "ระบบเสถียร", level_condition: "ALL" },
+            
+            // หมวด 4: แผนธุรกิจ (เลือก 2 จาก 5)
+            { item_code: "4.1", item_name: "SMC (Special Medical Center)", category: 4, dimension: "Revenue", score_0: "ไม่มีแผน", score_1: "มี คกก.+PM", score_2: "มีแผน+สถานที่", score_3: "เริ่มดำเนินการ", score_4: "มีบัญชีรายรับ-รายจ่าย", score_5: "สร้างผลกำไร", level_condition: "ALL" },
+            { item_code: "4.2", item_name: "I-claim ประกันเอกชน", category: 4, dimension: "Revenue", score_0: "ไม่มีแผน", score_1: "มี คกก.+PM", score_2: "มีแผน+สถานที่", score_3: "เริ่มดำเนินการ", score_4: "มีบัญชีรายรับ-รายจ่าย", score_5: "สร้างผลกำไร", level_condition: "ALL" },
+            { item_code: "4.3", item_name: "ตรวจสุขภาพ", category: 4, dimension: "Revenue", score_0: "ไม่มีแผน", score_1: "มี คกก.+PM", score_2: "มีแผน+สถานที่", score_3: "เริ่มดำเนินการ", score_4: "มีบัญชีรายรับ-รายจ่าย", score_5: "สร้างผลกำไร", level_condition: "ALL" },
+            { item_code: "4.4", item_name: "Wellness Center", category: 4, dimension: "Revenue", score_0: "ไม่มีแผน", score_1: "มี คกก.+PM", score_2: "มีแผน+สถานที่", score_3: "เริ่มดำเนินการ", score_4: "มีบัญชีรายรับ-รายจ่าย", score_5: "สร้างผลกำไร", level_condition: "ALL" },
+            { item_code: "4.5", item_name: "อื่นๆ", category: 4, dimension: "Revenue", score_0: "ไม่มีแผน", score_1: "มี คกก.+PM", score_2: "มีแผน+สถานที่", score_3: "เริ่มดำเนินการ", score_4: "มีบัญชีรายรับ-รายจ่าย", score_5: "สร้างผลกำไร", level_condition: "ALL" },
+            
+            // หมวด 5: PP Fee Schedule
+            { item_code: "5.1", item_name: "ผลงานส่งเสริมสุขภาพ PP", category: 5, dimension: "Revenue", score_0: "ไม่มีการดำเนินการ", score_1: "มี คกก.PP", score_2: "มี Flowchart 22 บริการ", score_3: "มีแผนปฏิบัติการ", score_4: "ผลงาน ≥5 บริการ", score_5: "ผลงาน ≥10 บริการ", level_condition: "ALL" },
+            
+            // หมวด 6: การควบคุมรายจ่าย
+            { item_code: "6.1", item_name: "ลดค่าสาธารณูปโภค", category: 6, dimension: "Cost", score_0: "ไม่มีมาตรการ", score_1: "มีมาตรการ", score_2: "สื่อสารผู้ปฏิบัติ", score_3: "ผลสูงกว่าแผน >5%", score_4: "ผลสูงกว่าแผน ≤5%", score_5: "ผล ≤ แผน", level_condition: "ALL" },
+            { item_code: "6.2", item_name: "ลดค่าใช้จ่ายยา", category: 6, dimension: "Cost", score_0: "ไม่มีมาตรการ", score_1: "มีมาตรการ", score_2: "สื่อสารผู้ปฏิบัติ", score_3: "ผลสูงกว่าแผน >5%", score_4: "ผลสูงกว่าแผน ≤5%", score_5: "ผล ≤ แผน", level_condition: "ALL" },
+            { item_code: "6.3", item_name: "ลดค่าใช้จ่าย Lab", category: 6, dimension: "Cost", score_0: "ไม่มีมาตรการ", score_1: "มีมาตรการ", score_2: "สื่อสารผู้ปฏิบัติ", score_3: "ผลสูงกว่าแผน >5%", score_4: "ผลสูงกว่าแผน ≤5%", score_5: "ผล ≤ แผน", level_condition: "ALL" },
+            { item_code: "6.4", item_name: "ลดค่าใช้จ่าย CT", category: 6, dimension: "Cost", score_0: "ไม่มีมาตรการ", score_1: "มีมาตรการ", score_2: "สื่อสารผู้ปฏิบัติ", score_3: "ผลสูงกว่าแผน >5%", score_4: "ผลสูงกว่าแผน ≤5%", score_5: "ผล ≤ แผน", level_condition: "M1,M2,A" },
+            { item_code: "6.5", item_name: "ควบคุมวัสดุสิ้นเปลือง", category: 6, dimension: "Cost", score_0: "ไม่มีมาตรการ", score_1: "มีมาตรการ", score_2: "สื่อสารผู้ปฏิบัติ", score_3: "ผลสูงกว่าแผน >5%", score_4: "ผลสูงกว่าแผน ≤5%", score_5: "ผล ≤ แผน", level_condition: "ALL" }
+        ];
     </script>
 
     <!-- Header -->
     <header class="bg-blue-800 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold">📊 R7 Assessment System</h1>
+            <h1 class="text-xl font-bold">📊 R7 Assessment System v2.0</h1>
             <div id="userInfo" class="hidden flex items-center gap-4">
                 <span id="userName" class="text-sm"></span>
                 <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm">ออกจากระบบ</button>
@@ -204,7 +256,7 @@
         <div class="bg-white p-6 rounded-lg shadow">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-2xl font-bold">📝 แบบประเมินมาตรฐานการเงินการคลัง</h3>
-                <button onclick="hideAssessmentForm()" class="text-gray-500 hover:text-gray-700">✕ ปิด</button>
+                <button onclick="hideAssessmentForm()" class="text-gray-500 hover:text-gray-700 text-2xl">✕</button>
             </div>
 
             <!-- Form Header -->
@@ -224,14 +276,14 @@
                     <div class="text-gray-600 mb-1">Live Score</div>
                     <div class="text-3xl font-bold">
                         <span id="liveComposite" class="text-blue-600">0</span>
-                        <span id="liveGrade" class="ml-2 px-2 py-1 rounded text-sm">-</span>
+                        <span id="liveGrade" class="ml-2 px-2 py-1 rounded text-sm bg-gray-200">-</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Assessment Items -->
+            <!-- Assessment Items Container -->
             <div id="assessmentItems">
-                <!-- Will be populated by JavaScript -->
+                <p class="text-gray-500 p-4">กำลังโหลดเกณฑ์การประเมิน...</p>
             </div>
 
             <!-- Save Button -->
@@ -333,23 +385,15 @@
         async function loadAdminDashboard() {
             document.getElementById('adminDashboard').classList.remove('hidden');
             
-            // Load hospitals
             const hospResult = await callAPI('getHospitals');
             if (hospResult.success) {
                 allHospitals = hospResult.hospitals;
                 document.getElementById('totalHospitals').textContent = allHospitals.length;
             }
 
-            // Load all scores
             const scoreResult = await callAPI('getAllScores');
             if (scoreResult.success) {
                 allScores = scoreResult.scores;
-            }
-
-            // Load criteria
-            const critResult = await callAPI('getCriteria');
-            if (critResult.success) {
-                allCriteria = critResult.criteria;
             }
 
             updateAdminStats();
@@ -357,7 +401,6 @@
         }
 
         function updateAdminStats() {
-            // Get latest score for each hospital
             const latestScores = {};
             allScores.forEach(s => {
                 const code = s.hospital_code;
@@ -385,7 +428,6 @@
             const filterProv = document.getElementById('filterProvince').value;
             const filterLevel = document.getElementById('filterLevel').value;
 
-            // Get latest scores map
             const latestScores = {};
             allScores.forEach(s => {
                 const code = s.hospital_code;
@@ -430,7 +472,6 @@
         async function loadHospitalDashboard(code) {
             document.getElementById('hospitalDashboard').classList.remove('hidden');
 
-            // Load hospital info
             const hospResult = await callAPI('getHospital', { code });
             if (hospResult.success) {
                 currentHospital = hospResult.hospital;
@@ -439,10 +480,8 @@
                 document.getElementById('hospitalLevel').textContent = `ระดับ ${currentHospital.level}`;
             }
 
-            // Load scores
             const scoreResult = await callAPI('getScores', { hospital_code: code });
             if (scoreResult.success && scoreResult.scores.length > 0) {
-                // Get latest score
                 const latest = scoreResult.scores.sort((a, b) => b.updated_at > a.updated_at ? 1 : -1)[0];
                 displayHospitalScore(latest);
                 displayAssessmentHistory(scoreResult.scores);
@@ -453,14 +492,7 @@
                 document.getElementById('assessmentHistory').innerHTML = '<p class="text-gray-500">ยังไม่มีประวัติการประเมิน</p>';
             }
 
-            // Load criteria
-            const critResult = await callAPI('getCriteria');
-            if (critResult.success) {
-                allCriteria = critResult.criteria;
-            }
-
-            // Load best practice
-            loadBestPractice(currentHospital.level);
+            loadBestPractice(currentHospital ? currentHospital.level : 'A');
         }
 
         function displayHospitalScore(score) {
@@ -518,7 +550,6 @@
             
             if (result.success && result.bestPractice) {
                 const bp = result.bestPractice;
-                // Get hospital name
                 const hospResult = await callAPI('getHospital', { code: bp.hospital_code });
                 const hospName = hospResult.success ? hospResult.hospital.name : bp.hospital_code;
                 
@@ -537,10 +568,25 @@
         }
 
         // ==================== ASSESSMENT FORM ====================
-        function showAssessmentForm() {
+        async function showAssessmentForm() {
             document.getElementById('hospitalDashboard').classList.add('hidden');
             document.getElementById('assessmentForm').classList.remove('hidden');
             document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
+            
+            // Try to load criteria from API first, fallback to embedded
+            if (allCriteria.length === 0) {
+                console.log('Loading criteria from API...');
+                const result = await callAPI('getCriteria');
+                if (result.success && result.criteria && result.criteria.length > 0) {
+                    allCriteria = result.criteria;
+                    console.log('Loaded from API:', allCriteria.length, 'items');
+                } else {
+                    console.log('API failed, using embedded criteria');
+                    allCriteria = EMBEDDED_CRITERIA;
+                    console.log('Using embedded:', allCriteria.length, 'items');
+                }
+            }
+            
             renderAssessmentItems();
         }
 
@@ -552,55 +598,83 @@
         function renderAssessmentItems() {
             const container = document.getElementById('assessmentItems');
             
+            // Use embedded criteria if allCriteria is empty
+            const criteriaToUse = allCriteria.length > 0 ? allCriteria : EMBEDDED_CRITERIA;
+            console.log('Rendering with', criteriaToUse.length, 'criteria items');
+            
+            if (criteriaToUse.length === 0) {
+                container.innerHTML = '<p class="text-red-500 p-4">❌ ไม่สามารถโหลดเกณฑ์การประเมินได้</p>';
+                return;
+            }
+            
             const categories = [
-                { id: 1, name: 'หมวด 1: การนำและการวางแผนการเงิน', color: 'blue' },
-                { id: 2, name: 'หมวด 2: ระบบเวชระเบียน', color: 'green' },
-                { id: 3, name: 'หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ', color: 'purple' },
-                { id: 4, name: 'หมวด 4: แผนธุรกิจ (เลือก 2 จาก 5 ข้อ)', color: 'orange' },
-                { id: 5, name: 'หมวด 5: PP Fee Schedule', color: 'pink' },
-                { id: 6, name: 'หมวด 6: การควบคุมรายจ่าย', color: 'red' }
+                { id: 1, name: 'หมวด 1: การนำและการวางแผนการเงิน (6 ข้อ)', cssClass: 'cat-1' },
+                { id: 2, name: 'หมวด 2: ระบบเวชระเบียน (2 ข้อ)', cssClass: 'cat-2' },
+                { id: 3, name: 'หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ (14 ข้อ)', cssClass: 'cat-3' },
+                { id: 4, name: 'หมวด 4: แผนธุรกิจ (เลือก 2 จาก 5 ข้อ)', cssClass: 'cat-4' },
+                { id: 5, name: 'หมวด 5: PP Fee Schedule (1 ข้อ)', cssClass: 'cat-5' },
+                { id: 6, name: 'หมวด 6: การควบคุมรายจ่าย (5 ข้อ)', cssClass: 'cat-6' }
             ];
 
             let html = '';
             categories.forEach(cat => {
-                const items = allCriteria.filter(c => c.category === cat.id);
+                // Filter items for this category (handle both string and number)
+                const items = criteriaToUse.filter(c => {
+                    const catNum = typeof c.category === 'string' ? parseInt(c.category) : c.category;
+                    return catNum === cat.id;
+                });
+                
+                console.log(`Category ${cat.id}: ${items.length} items`);
                 
                 html += `
                     <div class="mb-6 border rounded-lg overflow-hidden">
-                        <div class="bg-${cat.color}-100 p-4 font-bold text-${cat.color}-800">${cat.name}</div>
+                        <div class="cat-header ${cat.cssClass} p-4 font-bold text-gray-800">${cat.name}</div>
                         <div class="p-4 space-y-4">
                 `;
 
+                if (items.length === 0) {
+                    html += `<p class="text-gray-400 text-sm">ไม่พบข้อประเมินในหมวดนี้</p>`;
+                }
+
                 items.forEach(item => {
-                    const itemKey = item.item_code.replace('.', '_');
+                    const itemCode = String(item.item_code);
+                    const itemKey = itemCode.replace('.', '_');
                     const isCat4 = cat.id === 4;
-                    const isLevel64 = item.item_code === '6.4';
-                    const showItem = !isLevel64 || (currentHospital && ['M1', 'M2', 'A'].includes(currentHospital.level));
+                    const isItem64 = itemCode === '6.4';
+                    const hospitalLevel = currentHospital ? currentHospital.level : '';
+                    const levelCondition = item.level_condition || 'ALL';
+                    const showItem = levelCondition === 'ALL' || levelCondition.includes(hospitalLevel);
 
                     if (!showItem) return;
 
                     html += `
-                        <div class="border-b pb-4" id="item_wrapper_${itemKey}">
-                            <div class="flex items-start gap-4">
-                                ${isCat4 ? `<input type="checkbox" id="cat4_check_${itemKey}" class="mt-1 w-5 h-5" onchange="toggleCat4Item('${itemKey}')">` : ''}
+                        <div class="border-b pb-4 last:border-b-0">
+                            <div class="flex items-start gap-3">
+                                ${isCat4 ? `
+                                    <input type="checkbox" id="cat4_check_${itemKey}" 
+                                        class="mt-1 w-5 h-5 cursor-pointer accent-orange-500" 
+                                        onchange="toggleCat4Item('${itemKey}')">
+                                ` : '<div class="w-5"></div>'}
                                 <div class="flex-1">
-                                    <label class="font-medium text-gray-700">${item.item_code} ${item.item_name}</label>
-                                    <div class="mt-2 flex items-center gap-4">
-                                        <select id="score_${itemKey}" class="border p-2 rounded w-32 ${isCat4 ? 'opacity-50' : ''}" 
-                                            onchange="onScoreChange('${itemKey}')" ${isCat4 ? 'disabled' : ''}>
-                                            <option value="">เลือก</option>
-                                            <option value="0">0</option>
-                                            <option value="1">1</option>
-                                            <option value="2">2</option>
-                                            <option value="3">3</option>
-                                            <option value="4">4</option>
-                                            <option value="5">5</option>
+                                    <label class="font-medium text-gray-700 block mb-2">
+                                        <span class="text-blue-600">${itemCode}</span> ${item.item_name}
+                                    </label>
+                                    <div class="flex items-center gap-3">
+                                        <select id="score_${itemKey}" 
+                                            class="border p-2 rounded w-44 ${isCat4 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}" 
+                                            onchange="onScoreChange('${itemKey}')" 
+                                            ${isCat4 ? 'disabled' : ''}>
+                                            <option value="">-- เลือกคะแนน --</option>
+                                            <option value="0">0 คะแนน</option>
+                                            <option value="1">1 คะแนน</option>
+                                            <option value="2">2 คะแนน</option>
+                                            <option value="3">3 คะแนน</option>
+                                            <option value="4">4 คะแนน</option>
+                                            <option value="5">5 คะแนน</option>
                                         </select>
-                                        <span class="text-gray-400 text-sm">/ 5 คะแนน</span>
+                                        <span class="text-gray-400 text-sm">/ 5</span>
                                     </div>
-                                    <div id="criteria_${itemKey}" class="criteria-box mt-2 p-3 hidden rounded">
-                                        <span class="text-sm text-gray-600"></span>
-                                    </div>
+                                    <div id="criteria_${itemKey}" class="criteria-box mt-2 p-3 rounded hidden text-sm"></div>
                                 </div>
                             </div>
                         </div>
@@ -611,6 +685,7 @@
             });
 
             container.innerHTML = html;
+            console.log('Assessment form rendered successfully');
         }
 
         function toggleCat4Item(itemKey) {
@@ -618,20 +693,26 @@
             const select = document.getElementById(`score_${itemKey}`);
             
             // Count checked items in cat4
-            const cat4Checks = document.querySelectorAll('[id^="cat4_check_4_"]');
+            const cat4Checks = document.querySelectorAll('[id^="cat4_check_4"]');
             const checkedCount = Array.from(cat4Checks).filter(c => c.checked).length;
 
             if (checkbox.checked && checkedCount > 2) {
                 checkbox.checked = false;
-                alert('เลือกได้เพียง 2 ข้อเท่านั้น');
+                alert('⚠️ เลือกได้เพียง 2 ข้อเท่านั้น');
                 return;
             }
 
-            select.disabled = !checkbox.checked;
-            select.classList.toggle('opacity-50', !checkbox.checked);
-            if (!checkbox.checked) {
-                select.value = '';
-                document.getElementById(`criteria_${itemKey}`).classList.add('hidden');
+            if (select) {
+                select.disabled = !checkbox.checked;
+                select.classList.toggle('bg-gray-100', !checkbox.checked);
+                select.classList.toggle('bg-white', checkbox.checked);
+                select.classList.toggle('cursor-not-allowed', !checkbox.checked);
+                
+                if (!checkbox.checked) {
+                    select.value = '';
+                    const criteriaBox = document.getElementById(`criteria_${itemKey}`);
+                    if (criteriaBox) criteriaBox.classList.add('hidden');
+                }
             }
             
             updateLiveScore();
@@ -644,9 +725,11 @@
 
             if (score !== '') {
                 const itemCode = itemKey.replace('_', '.');
-                const item = allCriteria.find(c => c.item_code === itemCode);
+                const criteriaToUse = allCriteria.length > 0 ? allCriteria : EMBEDDED_CRITERIA;
+                const item = criteriaToUse.find(c => String(c.item_code) === itemCode);
+                
                 if (item) {
-                    const criteriaText = item[`score_${score}`] || '';
+                    const criteriaText = item[`score_${score}`] || 'ไม่มีคำอธิบาย';
                     criteriaBox.innerHTML = `<span class="font-medium text-blue-700">${score} คะแนน:</span> <span class="text-gray-700">${criteriaText}</span>`;
                     criteriaBox.classList.remove('hidden');
                 }
@@ -666,30 +749,35 @@
             const gradeEl = document.getElementById('liveGrade');
             gradeEl.textContent = dims.grade;
             gradeEl.className = 'ml-2 px-2 py-1 rounded text-sm font-bold ' +
-                (dims.grade === 'A' ? 'grade-a' : dims.grade === 'B' ? 'grade-b' : dims.grade === 'C' ? 'grade-c' : 'grade-d');
+                (dims.grade === 'A' ? 'grade-a' : dims.grade === 'B' ? 'grade-b' : dims.grade === 'C' ? 'grade-c' : dims.grade === 'D' ? 'grade-d' : 'bg-gray-200');
         }
 
         function collectFormData() {
             const data = {
-                hospital_code: currentHospital.code,
+                hospital_code: currentHospital ? currentHospital.code : '',
                 round: document.getElementById('assessRound').value,
                 date: document.getElementById('assessDate').value,
                 cat4_selected: []
             };
 
-            // Collect all scores
-            allCriteria.forEach(item => {
-                const itemKey = item.item_code.replace('.', '_');
+            const criteriaToUse = allCriteria.length > 0 ? allCriteria : EMBEDDED_CRITERIA;
+            
+            criteriaToUse.forEach(item => {
+                const itemKey = String(item.item_code).replace('.', '_');
                 const select = document.getElementById(`score_${itemKey}`);
-                if (select && !select.disabled) {
-                    data[`item_${itemKey}`] = select.value || '';
-                }
-
-                // Check cat4 selections
-                if (item.category === 4) {
-                    const checkbox = document.getElementById(`cat4_check_${itemKey}`);
-                    if (checkbox && checkbox.checked) {
-                        data.cat4_selected.push(item.item_code);
+                const catNum = typeof item.category === 'string' ? parseInt(item.category) : item.category;
+                
+                if (select) {
+                    if (catNum === 4) {
+                        const checkbox = document.getElementById(`cat4_check_${itemKey}`);
+                        if (checkbox && checkbox.checked) {
+                            data.cat4_selected.push(String(item.item_code));
+                            data[`item_${itemKey}`] = select.value || '0';
+                        } else {
+                            data[`item_${itemKey}`] = '0';
+                        }
+                    } else {
+                        data[`item_${itemKey}`] = select.value || '0';
                     }
                 }
             });
@@ -701,10 +789,10 @@
         function calculateDimensions(data) {
             // Revenue: selected cat4 items + 5.1
             let revenueSum = 0, revenueMax = 15;
-            ['4_1','4_2','4_3','4_4','4_5'].forEach(item => {
-                if (data.cat4_selected.includes(item.replace('_','.'))) {
-                    revenueSum += Number(data['item_' + item] || 0);
-                }
+            const cat4Selected = (data.cat4_selected || '').split(',').filter(x => x);
+            cat4Selected.forEach(code => {
+                const key = 'item_' + code.replace('.', '_');
+                revenueSum += Number(data[key] || 0);
             });
             revenueSum += Number(data.item_5_1 || 0);
 
@@ -732,11 +820,11 @@
                 procSum += Number(data['item_' + item] || 0);
             });
 
-            const revenue = Math.round((revenueSum / revenueMax) * 100);
-            const cost = Math.round((costSum / costMax) * 100);
-            const discipline = Math.round((discSum / discMax) * 100);
-            const collection = Math.round((collSum / collMax) * 100);
-            const process = Math.round((procSum / procMax) * 100);
+            const revenue = revenueMax > 0 ? Math.round((revenueSum / revenueMax) * 100) : 0;
+            const cost = costMax > 0 ? Math.round((costSum / costMax) * 100) : 0;
+            const discipline = discMax > 0 ? Math.round((discSum / discMax) * 100) : 0;
+            const collection = collMax > 0 ? Math.round((collSum / collMax) * 100) : 0;
+            const process = procMax > 0 ? Math.round((procSum / procMax) * 100) : 0;
 
             const composite = Math.round(revenue * 0.35 + cost * 0.15 + discipline * 0.30 + collection * 0.15 + process * 0.05);
 
@@ -752,26 +840,25 @@
             const data = collectFormData();
             data.action = 'saveScore';
 
-            // Validate
             if (!data.date) {
-                alert('กรุณาเลือกวันที่ประเมิน');
+                alert('⚠️ กรุณาเลือกวันที่ประเมิน');
                 return;
             }
 
-            // Check cat4 selection
-            if (data.cat4_selected.split(',').filter(x => x).length !== 2) {
-                alert('กรุณาเลือกข้อประเมินหมวด 4 จำนวน 2 ข้อ');
+            const cat4Count = (data.cat4_selected || '').split(',').filter(x => x).length;
+            if (cat4Count !== 2) {
+                alert('⚠️ กรุณาเลือกข้อประเมินหมวด 4 จำนวน 2 ข้อ (ขณะนี้เลือก ' + cat4Count + ' ข้อ)');
                 return;
             }
 
             const result = await postAPI(data);
             
             if (result.success) {
-                alert(`บันทึกสำเร็จ!\n\nComposite Score: ${result.composite}\nGrade: ${result.grade}`);
+                alert(`✅ บันทึกสำเร็จ!\n\n📊 Composite Score: ${result.composite}\n🏆 Grade: ${result.grade}`);
                 hideAssessmentForm();
                 loadHospitalDashboard(currentHospital.code);
             } else {
-                alert('เกิดข้อผิดพลาด: ' + (result.error || 'ไม่สามารถบันทึกได้'));
+                alert('❌ เกิดข้อผิดพลาด: ' + (result.error || 'ไม่สามารถบันทึกได้'));
             }
         }
 
@@ -811,8 +898,13 @@
         }
 
         async function exportHospitalExcel() {
+            if (!currentHospital) return;
+            
             const result = await callAPI('getScores', { hospital_code: currentHospital.code });
-            if (!result.success) return;
+            if (!result.success || !result.scores) {
+                alert('ไม่พบข้อมูลสำหรับ Export');
+                return;
+            }
 
             const data = result.scores.map(s => ({
                 'รอบ': s.round,
@@ -836,6 +928,9 @@
         // ==================== INIT ====================
         document.getElementById('password').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') login();
+        });
+        document.getElementById('username').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') document.getElementById('password').focus();
         });
     </script>
 </body>
