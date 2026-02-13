@@ -35,30 +35,30 @@
 <h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v3.1</h1>
 <div class="flex items-center gap-2 flex-wrap">
 <span id="headerUser" class="hidden text-sm opacity-90"></span>
-<button id="btnMyDash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">Dashboard รพ.</button>
-<button id="btnLogin" onclick="showPage('pageLogin')" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg text-sm transition">เข้าสู่ระบบ</button>
-<button id="btnLogout" onclick="doLogout()" class="hidden bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-sm transition">ออกจากระบบ</button>
+<button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">Dashboard รพ.</button>
+<button id="btnLogin" data-testid="btn-login" onclick="showPage('pageLogin')" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg text-sm transition">เข้าสู่ระบบ</button>
+<button id="btnLogout" data-testid="btn-logout" onclick="doLogout()" class="hidden bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-sm transition">ออกจากระบบ</button>
 </div>
 </div>
 </header>
 
 <!-- PAGE: PUBLIC DASHBOARD -->
-<div id="pageDashboard" class="container mx-auto px-4 py-6 fade-in">
+<div id="pageDashboard" data-testid="page-dashboard" class="container mx-auto px-4 py-6 fade-in">
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">รพ.ทั้งหมด</div><div id="sumTotal" class="text-2xl font-bold text-indigo-600">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade A</div><div id="sumA" class="text-2xl font-bold text-emerald-500">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade B</div><div id="sumB" class="text-2xl font-bold text-blue-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">รพ.ทั้งหมด</div><div id="sumTotal" data-testid="summary-total" class="text-2xl font-bold text-indigo-600">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade A</div><div id="sumA" data-testid="summary-grade-a" class="text-2xl font-bold text-emerald-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade B</div><div id="sumB" data-testid="summary-grade-b" class="text-2xl font-bold text-blue-500">-</div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade C</div><div id="sumC" class="text-2xl font-bold text-amber-500">-</div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade D</div><div id="sumD" class="text-2xl font-bold text-red-500">-</div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนเฉลี่ย</div><div id="sumAvg" class="text-2xl font-bold text-purple-600">-</div></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-end">
-<div><label class="text-gray-500 text-xs block mb-1">จังหวัด</label><select id="fProv" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">ระดับ</label><select id="fLev" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option>A</option><option>S</option><option>M1</option><option>M2</option><option>F1</option><option>F2</option><option>F3</option></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">รอบ</label><select id="fRnd" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">จังหวัด</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">ระดับ</label><select id="fLev" data-testid="filter-level" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option>A</option><option>S</option><option>M1</option><option>M2</option><option>F1</option><option>F2</option><option>F3</option></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">รอบ</label><select id="fRnd" data-testid="filter-round" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"></select></div>
 <div class="ml-auto flex gap-2">
 <button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
-<button onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">Download Excel</button>
+<button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">Download Excel</button>
 </div>
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -74,12 +74,12 @@
 <th class="p-3 text-center sortable" onclick="doSort('raw')">คะแนนรวม</th>
 <th class="p-3 text-center sortable" onclick="doSort('composite')">Composite</th>
 <th class="p-3 text-center sortable" onclick="doSort('grade')">Grade</th>
-</tr></thead><tbody id="tblBody"><tr><td colspan="7" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
+</tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="7" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
 </div>
 </div>
 
 <!-- PAGE: HOSPITAL DETAIL -->
-<div id="pageHospitalDetail" class="hidden container mx-auto px-4 py-6 fade-in">
+<div id="pageHospitalDetail" data-testid="page-hospital-detail" class="hidden container mx-auto px-4 py-6 fade-in">
 <button onclick="showPage('pageDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับหน้า Dashboard</button>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
@@ -98,19 +98,19 @@
 </div>
 
 <!-- PAGE: LOGIN -->
-<div id="pageLogin" class="hidden flex items-center justify-center min-h-[80vh] fade-in">
+<div id="pageLogin" data-testid="page-login" class="hidden flex items-center justify-center min-h-[80vh] fade-in">
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-100">
 <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">เข้าสู่ระบบ</h2>
 <div id="loginErr" class="hidden bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm"></div>
-<div class="mb-4"><label class="block text-gray-600 text-sm mb-1">Username</label><input type="text" id="inUser" class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="admin หรือ รหัส รพ."></div>
-<div class="mb-6"><label class="block text-gray-600 text-sm mb-1">Password</label><input type="password" id="inPass" class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="รหัสผ่าน"></div>
+<div class="mb-4"><label class="block text-gray-600 text-sm mb-1">Username</label><input type="text" id="inUser" data-testid="login-username" class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="admin หรือ รหัส รพ."></div>
+<div class="mb-6"><label class="block text-gray-600 text-sm mb-1">Password</label><input type="password" id="inPass" data-testid="login-password" class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400" placeholder="รหัสผ่าน"></div>
 <button onclick="doLogin()" id="btnDoLogin" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"><span>เข้าสู่ระบบ</span><span id="loginSpinner" class="loader hidden"></span></button>
 <p class="text-center mt-4"><a href="#" onclick="showPage('pageDashboard');return false" class="text-indigo-600 hover:underline text-sm">กลับหน้าหลัก</a></p>
 </div>
 </div>
 
 <!-- PAGE: MY DASHBOARD -->
-<div id="pageMyDashboard" class="hidden container mx-auto px-4 py-6 fade-in">
+<div id="pageMyDashboard" data-testid="page-my-dashboard" class="hidden container mx-auto px-4 py-6 fade-in">
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="mName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="mProv" class="text-gray-500 text-sm mb-2">-</p><span id="mLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
@@ -139,7 +139,7 @@
 </div>
 
 <!-- PAGE: ASSESSMENT -->
-<div id="pageAssessment" class="hidden container mx-auto px-4 py-6 fade-in">
+<div id="pageAssessment" data-testid="page-assessment" class="hidden container mx-auto px-4 py-6 fade-in">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <div class="flex justify-between items-center mb-4">
 <h3 class="text-lg font-bold text-gray-800">แบบประเมินมาตรฐานการเงินการคลัง</h3>
@@ -148,19 +148,19 @@
 <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
 <div><label class="block text-gray-600 text-xs mb-1">รอบประเมิน</label><select id="aRound" onchange="loadDraft()" class="w-full p-2 border border-gray-200 rounded-lg text-sm"></select></div>
 <div><label class="block text-gray-600 text-xs mb-1">วันที่ประเมิน</label><input type="date" id="aDate" class="w-full p-2 border border-gray-200 rounded-lg text-sm"></div>
-<div class="text-center"><div class="text-gray-500 text-xs mb-1">Live Score</div><span id="lComp" class="text-3xl font-bold text-indigo-600">0</span><span id="lGrd" class="ml-1 px-2 py-0.5 rounded text-xs font-bold bg-gray-200">-</span></div>
+<div class="text-center"><div class="text-gray-500 text-xs mb-1">Live Score</div><span id="lComp" data-testid="live-composite" class="text-3xl font-bold text-indigo-600">0</span><span id="lGrd" data-testid="live-grade" class="ml-1 px-2 py-0.5 rounded text-xs font-bold bg-gray-200">-</span></div>
 <div><div class="text-gray-500 text-xs mb-1">ความคืบหน้า</div><div class="w-full bg-gray-200 rounded-full h-4 mt-1 overflow-hidden"><div id="aBar" class="progress-bar-inner bg-indigo-500 h-4 rounded-full" style="width:0%"></div></div><div id="aProg" class="text-xs text-gray-500 mt-1">0/33</div></div>
 </div>
-<div id="aItems"></div>
+<div id="aItems" data-testid="assessment-items"></div>
 <div class="mt-6 text-center">
-<button onclick="saveAssess()" id="btnSave" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 mx-auto"><span>บันทึกการประเมิน</span><span id="saveSpinner" class="loader hidden"></span></button>
+<button onclick="saveAssess()" id="btnSave" data-testid="btn-save-assessment" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 mx-auto"><span>บันทึกการประเมิน</span><span id="saveSpinner" class="loader hidden"></span></button>
 <p id="saveMsg" class="mt-2 text-gray-400 text-sm"></p>
 </div>
 </div>
 </div>
 
 <!-- PAGE: REPORT -->
-<div id="pageReport" class="hidden container mx-auto px-4 py-6 fade-in">
+<div id="pageReport" data-testid="page-report" class="hidden container mx-auto px-4 py-6 fade-in">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <h3 class="text-lg font-bold text-gray-800 mb-1">รายงานผลประเมิน</h3>
 <p id="rSub" class="text-gray-500 text-sm mb-4">-</p>
@@ -255,12 +255,18 @@ function calcDimsFromRec(d){
 // ==================== NAVIGATION ====================
 const PG=['pageDashboard','pageHospitalDetail','pageLogin','pageMyDashboard','pageAssessment','pageReport'];
 function showPage(id){
+  // Authorization: block restricted pages for regional viewers
+  if(CU&&CU.role==='regional'&&['pageMyDashboard','pageAssessment','pageReport'].includes(id)){id='pageDashboard';}
   PG.forEach(p=>{const e=document.getElementById(p);if(e)e.classList.toggle('hidden',p!==id);});
   document.getElementById('btnLogin').classList.toggle('hidden',!!CU);
   document.getElementById('btnLogout').classList.toggle('hidden',!CU);
   document.getElementById('headerUser').classList.toggle('hidden',!CU);
-  document.getElementById('btnMyDash').classList.toggle('hidden',!(CU&&CU.role!=='admin'));
+  document.getElementById('btnMyDash').classList.toggle('hidden',!(CU&&CU.role==='hospital'));
   document.getElementById('btnImport').classList.toggle('hidden',!(CU&&CU.role==='admin'&&id==='pageDashboard'));
+  // Regional viewer: auto-filter by province
+  if(CU&&CU.role==='regional'&&CU.province&&id==='pageDashboard'){
+    const fp=document.getElementById('fProv');if(fp&&CU.province){fp.value=CU.province;refreshDash();}
+  }
   window.scrollTo(0,0);
 }
 
@@ -511,6 +517,7 @@ async function doLogin(){
   if(r.success){
     CU=r.user;document.getElementById('headerUser').textContent=CU.username+' ('+CU.role+')';
     if(CU.role==='admin'){showPage('pageDashboard');}
+    else if(CU.role==='regional'){showPage('pageDashboard');}
     else{showLoad('กำลังโหลดข้อมูล รพ...');await loadMyDash(CU.hospital_code);hideLoad();showPage('pageMyDashboard');}
   }else{document.getElementById('loginErr').textContent=r.error||'เข้าสู่ระบบไม่สำเร็จ';document.getElementById('loginErr').classList.remove('hidden');}
 }
@@ -564,6 +571,7 @@ async function loadMyDash(code){
 
 // ==================== ASSESSMENT ====================
 function startAssess(){
+  if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์ทำแบบประเมิน');return;}
   _rd=null;
   const now=new Date();const by=now.getFullYear()+543;
   const currentRound=(now.getMonth()<6?'1/':'2/')+by;
@@ -572,6 +580,7 @@ function startAssess(){
   renderItems();showPage('pageAssessment');
 }
 function editAssess(round){
+  if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์แก้ไขแบบประเมิน');return;}
   _rd=round;document.getElementById('aRound').value=round;document.getElementById('aDate').value=new Date().toISOString().split('T')[0];
   renderItems();
   if(CH){
@@ -642,6 +651,7 @@ function collectForm(){
 function autoSave(){if(!CH)return;const d=collectForm();d.date=document.getElementById('aDate').value;ls('r7_draft_'+CH.code,d);}
 
 async function saveAssess(){
+  if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์บันทึกแบบประเมิน');return;}
   const d=collectForm(),dm=calcDims(d);
   if(!d.date){alert('กรุณาเลือกวันที่ประเมิน');return;}
   const payload={action:'saveScore',hospital_code:CH.code,round:d.round,date:d.date,composite:dm.composite,grade:dm.grade,dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,cat4_selected:(dm.top2||[]).map(k=>k.replace('_','.')).join(',')};

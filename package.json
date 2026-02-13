@@ -1,0 +1,15 @@
+{
+  "name": "r7-assessment-v2",
+  "version": "3.1.0",
+  "description": "R7 Financial Assessment System - เขตสุขภาพที่ 7",
+  "scripts": {
+    "build:data": "node generate_embedded.js",
+    "build": "node build_v31.js",
+    "test": "node tests/scoring.test.js && node tests/smoke.test.js",
+    "test:scoring": "node tests/scoring.test.js",
+    "test:smoke": "node tests/smoke.test.js"
+  },
+  "devDependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

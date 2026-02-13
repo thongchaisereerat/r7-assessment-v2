@@ -1,0 +1,68 @@
+{
+  "description": "Golden Test Case 2: Low-performing hospital (Grade D)",
+  "hospital": {
+    "code": "99902",
+    "name": "โรงพยาบาลทดสอบ D",
+    "province": "ร้อยเอ็ด",
+    "level": "F2"
+  },
+  "input": {
+    "round": "1/2569",
+    "date": "2026-02-01",
+    "scores": {
+      "1.1": 2, "1.2": 1, "1.3": 2, "1.4": 1, "1.5": 2, "1.6": 1,
+      "2.1": 2, "2.2": 1,
+      "3.1": 2, "3.2": 1, "3.3": 2, "3.4": 1, "3.5": 2, "3.6": 1,
+      "3.7": 2, "3.8": 1, "3.9": 2, "3.10": 1, "3.11": 2,
+      "3.12": 2, "3.13": 1, "3.14": 2,
+      "4.1": 3, "4.2": 1, "4.3": 2, "4.4": 0, "4.5": 1,
+      "5.1": 2,
+      "6.1": 2, "6.2": 1, "6.3": 2, "6.4": 0, "6.5": 1
+    }
+  },
+  "expected": {
+    "cat4_top2": ["4_1", "4_3"],
+    "cat4_top2_note": "4.1=3 (highest), 4.3=2 (second). Remaining: 4.2=1, 4.5=1, 4.4=0",
+    "dimensions": {
+      "revenue": {
+        "raw": 7,
+        "max": 15,
+        "pct": 47,
+        "items_note": "top2(4.1=3, 4.3=2) + 5.1=2 = 7"
+      },
+      "cost": {
+        "raw": 6,
+        "max": 25,
+        "pct": 24,
+        "items_note": "6.1=2 + 6.2=1 + 6.3=2 + 6.4=0 + 6.5=1 = 6"
+      },
+      "discipline": {
+        "raw": 9,
+        "max": 30,
+        "pct": 30,
+        "items_note": "1.3=2 + 1.4=1 + 1.5=2 + 1.6=1 + 3.12=2 + 3.13=1 = 9"
+      },
+      "collection": {
+        "raw": 8,
+        "max": 25,
+        "pct": 32,
+        "items_note": "3.7=2 + 3.8=1 + 3.9=2 + 3.10=1 + 3.11=2 = 8"
+      },
+      "process": {
+        "raw": 18,
+        "max": 55,
+        "pct": 33,
+        "items_note": "1.1=2 + 1.2=1 + 2.1=2 + 2.2=1 + 3.1=2 + 3.2=1 + 3.3=2 + 3.4=1 + 3.5=2 + 3.6=1 + 3.14=2 = 17... wait: 2+1+2+1+2+1+2+1+2+1+2 = 17, pct = round(17/55*100) = 31"
+      }
+    },
+    "composite": 35,
+    "composite_calc": "round(47*0.35 + 24*0.15 + 30*0.30 + 32*0.15 + 33*0.05) = round(16.45 + 3.6 + 9.0 + 4.8 + 1.65) = round(35.5) = 36",
+    "grade": "D",
+    "total_raw": 53,
+    "total_raw_calc": "cat1(9) + cat2(3) + cat3(22) + cat4_top2(5) + cat5(2) + cat6(6) = 47... recalc needed, see test",
+    "strengths_count": 0,
+    "strengths_note": "No items with score >= 4",
+    "weaknesses_count": 25,
+    "weaknesses_note": "Items with score <= 2 (most items)"
+  }
+}

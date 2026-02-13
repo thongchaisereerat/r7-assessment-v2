@@ -1,0 +1,68 @@
+{
+  "description": "Golden Test Case 1: High-performing hospital (Grade A)",
+  "hospital": {
+    "code": "99901",
+    "name": "โรงพยาบาลทดสอบ A",
+    "province": "ขอนแก่น",
+    "level": "M1"
+  },
+  "input": {
+    "round": "1/2569",
+    "date": "2026-02-01",
+    "scores": {
+      "1.1": 5, "1.2": 5, "1.3": 5, "1.4": 5, "1.5": 4, "1.6": 4,
+      "2.1": 5, "2.2": 4,
+      "3.1": 5, "3.2": 5, "3.3": 4, "3.4": 4, "3.5": 5, "3.6": 4,
+      "3.7": 5, "3.8": 4, "3.9": 5, "3.10": 4, "3.11": 5,
+      "3.12": 5, "3.13": 4, "3.14": 5,
+      "4.1": 5, "4.2": 3, "4.3": 4, "4.4": 2, "4.5": 5,
+      "5.1": 4,
+      "6.1": 5, "6.2": 4, "6.3": 5, "6.4": 4, "6.5": 5
+    }
+  },
+  "expected": {
+    "cat4_top2": ["4_1", "4_5"],
+    "cat4_top2_note": "4.1=5, 4.5=5 tied; lower item number wins → 4.1 first, 4.5 second",
+    "dimensions": {
+      "revenue": {
+        "raw": 14,
+        "max": 15,
+        "pct": 93,
+        "items_note": "top2(4.1=5, 4.5=5) + 5.1=4 = 14"
+      },
+      "cost": {
+        "raw": 23,
+        "max": 25,
+        "pct": 92,
+        "items_note": "6.1=5 + 6.2=4 + 6.3=5 + 6.4=4 + 6.5=5 = 23"
+      },
+      "discipline": {
+        "raw": 27,
+        "max": 30,
+        "pct": 90,
+        "items_note": "1.3=5 + 1.4=5 + 1.5=4 + 1.6=4 + 3.12=5 + 3.13=4 = 27"
+      },
+      "collection": {
+        "raw": 23,
+        "max": 25,
+        "pct": 92,
+        "items_note": "3.7=5 + 3.8=4 + 3.9=5 + 3.10=4 + 3.11=5 = 23"
+      },
+      "process": {
+        "raw": 51,
+        "max": 55,
+        "pct": 93,
+        "items_note": "1.1=5 + 1.2=5 + 2.1=5 + 2.2=4 + 3.1=5 + 3.2=5 + 3.3=4 + 3.4=4 + 3.5=5 + 3.6=4 + 3.14=5 = 51"
+      }
+    },
+    "composite": 92,
+    "composite_calc": "round(93*0.35 + 92*0.15 + 90*0.30 + 92*0.15 + 93*0.05) = round(32.55 + 13.8 + 27.0 + 13.8 + 4.65) = round(91.8) = 92",
+    "grade": "A",
+    "total_raw": 143,
+    "total_raw_calc": "sum all except cat4 non-top2(4.2=3, 4.3=4, 4.4=2) = 148-5 = hm, let me recalc: cat1(28) + cat2(9) + cat3(69) + cat4_top2(10) + cat5(4) + cat6(23) = 143",
+    "strengths_count": 22,
+    "strengths_note": "Items with score >= 4",
+    "weaknesses_count": 1,
+    "weaknesses_note": "Items with score <= 2: only 4.4=2"
+  }
+}

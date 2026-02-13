@@ -1,6 +1,23 @@
 node_modules/
-*.js
-!index.html
-*.json
-!package.json
 *.py
+
+# Data files (large, generated)
+embedded_criteria.js
+embedded_scores.js
+criteria_data.json
+scores_data.json
+
+# Temp/analysis scripts
+analyze_excel.js
+analyze_excel2.js
+analyze_rounds.js
+explore_structure.js
+extract_scores.js
+extract_template.js
+gen.py
+gen_bootstrap.js
+gen_script.js
+gen_script.py
+test_lines.js
+test_path.js
+write_script.js
