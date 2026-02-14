@@ -36,7 +36,7 @@ const html = `<!DOCTYPE html>
 .overlay-loader .spinner{width:48px;height:48px;border:4px solid #e5e7eb;border-radius:50%;border-top-color:#4f46e5;animation:spin .8s linear infinite}
 .nl{white-space:pre-line}
 .qw-chip{display:inline-block;padding:4px 12px;border-radius:9999px;background:#eff6ff;color:#3b82f6;font-size:12px;cursor:pointer;border:1px solid #bfdbfe;transition:all .15s;margin:2px}.qw-chip:hover{background:#3b82f6;color:#fff}
-.c4-unsel .big-btn,.c4-unsel .fine-btn,.c4-unsel details,.c4-unsel .score-level{pointer-events:none;opacity:.25}
+.c4-unsel .big-btn,.c4-unsel .fine-btn,.c4-unsel .score-level{pointer-events:none;opacity:.25}
 .c4-ck{width:18px;height:18px;accent-color:#d97706;cursor:pointer}
 </style>
 </head>
@@ -76,31 +76,36 @@ const html = `<!DOCTYPE html>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนเฉลี่ย (%)</div><div id="sumAvg" class="text-2xl font-bold text-purple-600">-</div></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-end">
-<div><label class="text-gray-500 text-xs block mb-1">จังหวัด</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">ระดับ</label><select id="fLev" data-testid="filter-level" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option>A</option><option>S</option><option>M1</option><option>M2</option><option>F1</option><option>F2</option><option>F3</option></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">พื้นที่</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">เขต 7 ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
 <div><label class="text-gray-500 text-xs block mb-1">รอบ</label><select id="fRnd" data-testid="filter-round" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-48"></div>
 <div class="ml-auto flex gap-2">
 <button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
 <button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">Download Excel</button>
 </div>
 </div>
+<div id="provOverview" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">คะแนนเฉลี่ย 6 หมวด</h3><div style="position:relative;height:280px"><canvas id="cRadarDash"></canvas></div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">สัดส่วนระดับ</h3><div style="position:relative;height:280px"><canvas id="cDonutDash"></canvas></div></div>
 </div>
 <div class="grid grid-cols-1 gap-6 mb-6">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">การกระจายคะแนน (Histogram)</h3><div style="position:relative;height:220px"><canvas id="cHistDash" data-testid="histogram-chart"></canvas></div></div>
+<div id="histWrap" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 id="histTitle" class="font-bold text-gray-700 mb-2 text-sm">การกระจายคะแนน (Histogram)</h3><div style="position:relative;height:220px"><canvas id="cHistDash" data-testid="histogram-chart"></canvas></div></div>
+<div id="provCompareWrap" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hidden"><h3 class="font-bold text-gray-700 mb-2 text-sm">เปรียบเทียบรายจังหวัด 6 หมวด</h3><div style="position:relative;height:250px"><canvas id="cProvCompare"></canvas></div></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>
-<th class="p-3 text-left sortable" onclick="doSort('code')">รหัส</th>
-<th class="p-3 text-left sortable" onclick="doSort('name')">ชื่อ รพ.</th>
-<th class="p-3 text-left sortable" onclick="doSort('province')">จังหวัด</th>
-<th class="p-3 text-center sortable" onclick="doSort('level')">ระดับ</th>
-<th class="p-3 text-center sortable" onclick="doSort('wpct')">คะแนน (%)</th>
-<th class="p-3 text-center sortable" onclick="doSort('delta')">Δ ก่อนหน้า</th>
-<th class="p-3 text-center sortable" onclick="doSort('grade')">ระดับผลประเมิน</th>
-</tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="6" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
+<div class="overflow-x-auto"><table class="w-full text-sm" id="hospTable"><thead id="tblHead" class="bg-gray-50 sticky top-0"><tr>
+<th class="p-2 text-left sortable" onclick="doSort('name')">รพ.</th>
+<th class="p-2 text-center sortable" onclick="doSort('wpct')" style="width:70px">คะแนน</th>
+<th class="p-2 text-center sortable" onclick="doSort('delta')" style="width:55px">Δ</th>
+<th class="p-2 text-center sortable" onclick="doSort('grade')" style="width:60px">ระดับ</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 1: วางแผน (30)">วางแผน</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 2: เวชระเบียน (10)">เวช.</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 3: จัดเก็บรายได้ (70)">จัดเก็บ</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 4: แผนธุรกิจ (10)">ธุรกิจ</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 5: PP Fee (5)">PP</th>
+<th class="p-1 text-center text-xs" style="width:38px" title="หมวด 6: ควบคุมรายจ่าย (25)">คจ.</th>
+</tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="10" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
 </div>
 </div>
 
@@ -527,13 +532,51 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 // ==================== DASHBOARD ====================
+const PROVS=['ขอนแก่น','กาฬสินธุ์','มหาสารคาม','ร้อยเอ็ด'];
+const PROV_COLORS=['#4f46e5','#0891b2','#059669','#d97706'];
+
+function catHeatCell(pct,catName){
+  let bg,fg;
+  if(pct>=80){bg='rgba(16,185,129,0.2)';fg='#065f46';}
+  else if(pct>=60){bg='rgba(245,158,11,0.25)';fg='#92400e';}
+  else{bg='rgba(239,68,68,0.25)';fg='#991b1b';}
+  return '<td class="p-1 text-center"><div class="w-8 h-6 rounded mx-auto text-xs font-bold leading-6" style="background:'+bg+';color:'+fg+'" title="'+catName+': '+pct.toFixed(1)+'%">'+Math.round(pct)+'</div></td>';
+}
+
+function renderHospRow(r){
+  const dStr=r.delta!==null?(r.delta>0?'<span class="text-emerald-600 font-bold">&#8593;+'+r.delta.toFixed(1)+'</span>':r.delta<0?'<span class="text-red-500 font-bold">&#8595;'+r.delta.toFixed(1)+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">-</span>';
+  const catNames=['วางแผน','เวชระเบียน','จัดเก็บรายได้','แผนธุรกิจ','PP Fee','ควบคุมจ่าย'];
+  const catCells=r.catPcts.map((p,i)=>catHeatCell(p,catNames[i])).join('');
+  return '<tr class="border-b border-gray-50 hover:bg-indigo-50/50 cursor-pointer transition" onclick="openDetail(\\''+r.code+'\\')"><td class="p-2"><div class="font-medium text-gray-800 text-sm">'+esc(r.name)+'</div></td><td class="p-2 text-center font-bold">'+(r.wpct>0?r.wpct.toFixed(1):'-')+'</td><td class="p-2 text-center text-xs">'+dStr+'</td><td class="p-2 text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-bold '+gradeClass(r.grade)+'">'+r.grade+'</span></td>'+catCells+'</tr>';
+}
+
+function renderProvOverview(allHosp,scoreMap){
+  const container=document.getElementById('provOverview');
+  const pv=document.getElementById('fProv').value;
+  if(pv){container.innerHTML='';return;}
+  container.innerHTML=PROVS.map(prov=>{
+    const pvH=allHosp.filter(h=>h.province===prov);
+    let gA=0,gB=0,gC=0,gD=0,sum=0,cnt=0;
+    pvH.forEach(h=>{
+      const s=scoreMap[String(h.code)];
+      if(s){const wp=Number(s.wpct||0);const g=s.grade||gradeFromPct(wp);if(g==='A')gA++;else if(g==='B')gB++;else if(g==='C')gC++;else gD++;sum+=wp;cnt++;}
+    });
+    const avg=cnt>0?(sum/cnt).toFixed(1):'-';
+    const problems=gC+gD;
+    return '<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 cursor-pointer hover:shadow-md transition" onclick="document.getElementById(\\'fProv\\').value=\\''+prov+'\\';refreshDash();"><div class="flex justify-between items-center mb-2"><h4 class="font-bold text-gray-800 text-sm">'+prov+'</h4><span class="text-xs text-gray-400">'+pvH.length+' รพ.</span></div><div class="text-2xl font-bold '+(Number(avg)>=80?'text-indigo-600':'text-red-600')+' mb-2">'+avg+'%</div><div class="flex gap-1 text-xs"><span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">'+gA+'A</span><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">'+gB+'B</span>'+(gC>0?'<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">'+gC+'C</span>':'')+(gD>0?'<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">'+gD+'D</span>':'')+'</div>'+(problems>0?'<div class="mt-2 text-xs text-red-600 font-bold">&#9888; '+problems+' รพ.ต้องติดตาม</div>':'')+'</div>';
+  }).join('');
+}
+
 function refreshDash(){
-  const pv=document.getElementById('fProv').value,lv=document.getElementById('fLev').value,rn=document.getElementById('fRnd').value;
+  const pv=document.getElementById('fProv').value,rn=document.getElementById('fRnd').value;
+  const search=(document.getElementById('fSearch')||{}).value||'';
+  const searchLow=search.trim().toLowerCase();
   const lm=getLS(AS,rn);
-  // Previous round scores for delta calculation
   const prevRn=getPrevRound(rn);
   const prevLm=prevRn?getLS(AS,prevRn):{};
-  let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);if(lv)fh=fh.filter(h=>h.level===lv);
+  let fh=AH.slice();
+  if(pv)fh=fh.filter(h=>h.province===pv);
+  if(searchLow)fh=fh.filter(h=>h.name.toLowerCase().includes(searchLow)||String(h.code).includes(searchLow));
   let cA=0,cB=0,cC=0,cD=0,tot=0,cnt=0;
   const catSums=[0,0,0,0,0,0];let catCnt=0;
   const allWpcts=[];
@@ -552,12 +595,21 @@ function refreshDash(){
   document.getElementById('sumA').textContent=cA;document.getElementById('sumB').textContent=cB;
   document.getElementById('sumC').textContent=cC;document.getElementById('sumD').textContent=cD;
   document.getElementById('sumAvg').textContent=cnt>0?(tot/cnt).toFixed(1):'-';
-  // Highlight active grade filter card
   ['A','B','C','D'].forEach(g=>{const el=document.getElementById('sum'+g);if(el)el.parentElement.style.outline=(_gradeFilter===g)?'2px solid #4f46e5':'';});
   const catAvg=catCnt>0?catSums.map(s=>Math.round(s/catCnt)):[0,0,0,0,0,0];
-  mkRadar6('cRadarDash','chRD',catAvg);mkDonut([cA,cB,cC,cD]);mkHistogram(allWpcts);
-  // Build rows with delta
-  const hideProv=!!pv;
+  mkRadar6('cRadarDash','chRD',catAvg);mkDonut([cA,cB,cC,cD]);
+  // Province overview cards
+  renderProvOverview(fh,lm);
+  // Charts: histogram for single province, province comparison for whole region
+  const hw=document.getElementById('histWrap'),pcw=document.getElementById('provCompareWrap');
+  if(pv||searchLow){
+    if(hw)hw.classList.remove('hidden');if(pcw)pcw.classList.add('hidden');
+    mkHistogram(allWpcts);
+  }else{
+    if(hw)hw.classList.add('hidden');if(pcw)pcw.classList.remove('hidden');
+    mkProvCompare(AH,lm,rn);
+  }
+  // Build rows with delta + category heatmap data
   let rows=fh.map(h=>{
     const s=lm[String(h.code)];
     const wp=s?Number(s.wpct||0):0;
@@ -565,27 +617,38 @@ function refreshDash(){
     const ps=prevLm[String(h.code)];
     const prevWp=ps?Number(ps.wpct||0):null;
     const delta=(prevWp!==null&&wp>0)?(wp-prevWp):null;
-    return{code:h.code,name:h.name,province:h.province,level:h.level,wpct:wp,grade:g,delta};
+    let catPcts=[0,0,0,0,0,0];
+    const cached=s?lg('r7_scores_'+h.code+'_'+(s.round||'')):null;
+    if(cached){const cs=calcCatScores(cached,h.level);catPcts=cs.categories.map(c=>c.pct);}
+    return{code:h.code,name:h.name,province:h.province,wpct:wp,grade:g,delta,catPcts};
   });
-  // Apply grade filter
   if(_gradeFilter)rows=rows.filter(r=>r.grade===_gradeFilter);
   rows.sort((a,b)=>{let x=a[sf],y=b[sf];if(typeof x==='string')return sd*x.localeCompare(y,'th');return sd*((x||0)-(y||0));});
   const tb=document.getElementById('tblBody');
-  const cols=hideProv?5:6;
-  const colsDelta=cols+1;
-  if(!rows.length){tb.innerHTML='<tr><td colspan="'+colsDelta+'" class="p-8 text-center text-gray-400">ไม่พบข้อมูล</td></tr>';return;}
-  // Update table header (province + delta)
-  const thead=tb.closest('table').querySelector('thead tr');
-  thead.innerHTML='<th class="p-3 text-left sortable" onclick="doSort(\\'code\\')">รหัส</th><th class="p-3 text-left sortable" onclick="doSort(\\'name\\')">ชื่อ รพ.</th>'+(hideProv?'':'<th class="p-3 text-left sortable" onclick="doSort(\\'province\\')">จังหวัด</th>')+'<th class="p-3 text-center sortable" onclick="doSort(\\'level\\')">ระดับ</th><th class="p-3 text-center sortable" onclick="doSort(\\'wpct\\')">คะแนน (%)</th><th class="p-3 text-center sortable" onclick="doSort(\\'delta\\')">Δ ก่อนหน้า</th><th class="p-3 text-center sortable" onclick="doSort(\\'grade\\')">ระดับผลประเมิน</th>'+(_gradeFilter?'<th class="p-3 text-center"><button onclick="clearGradeFilter()" class="text-xs text-indigo-600 hover:underline">ล้าง filter</button></th>':'');
-  tb.innerHTML=rows.map(r=>{
-    const dStr=r.delta!==null?(r.delta>0?'<span class="text-emerald-600 font-bold">&#8593;+'+r.delta.toFixed(1)+'</span>':r.delta<0?'<span class="text-red-500 font-bold">&#8595;'+r.delta.toFixed(1)+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">-</span>';
-    return \`<tr class="border-b border-gray-50 hover:bg-indigo-50/50 cursor-pointer transition" onclick="openDetail('\${r.code}')">
-<td class="p-3 text-gray-600">\${r.code}</td><td class="p-3 font-medium text-gray-800">\${r.name}</td>\${hideProv?'':'<td class="p-3 text-gray-600">'+r.province+'</td>'}
-<td class="p-3 text-center"><span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">\${r.level}</span></td>
-<td class="p-3 text-center font-bold">\${r.wpct>0?r.wpct.toFixed(1):'-'}</td>
-<td class="p-3 text-center">\${dStr}</td>
-<td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gradeClass(r.grade)}">\${gradeLabel(r.grade)}</span></td>\${_gradeFilter?'<td></td>':''}</tr>\`;
-  }).join('');
+  // Update header with filter clear if needed
+  const thead=document.getElementById('tblHead');
+  if(thead&&thead.querySelector('tr')){
+    const tr=thead.querySelector('tr');
+    const hasFilter=tr.querySelector('.filter-clear-th');
+    if(_gradeFilter&&!hasFilter){tr.innerHTML+='<th class="p-2 text-center filter-clear-th"><button onclick="clearGradeFilter()" class="text-xs text-indigo-600 hover:underline">&#10005; ล้าง</button></th>';}
+    else if(!_gradeFilter&&hasFilter){hasFilter.remove();}
+  }
+  if(!rows.length){tb.innerHTML='<tr><td colspan="10" class="p-8 text-center text-gray-400">ไม่พบข้อมูล</td></tr>';return;}
+  // Render with province grouping if viewing whole region
+  if(!pv&&!searchLow&&!_gradeFilter){
+    let html='';
+    PROVS.forEach(prov=>{
+      const provRows=rows.filter(r=>r.province===prov);
+      if(!provRows.length)return;
+      const provAvg=provRows.reduce((s,r)=>s+r.wpct,0)/provRows.length;
+      const pProbs=provRows.filter(r=>r.grade==='C'||r.grade==='D').length;
+      html+='<tr class="bg-indigo-50 border-t-2 border-indigo-200"><td colspan="10" class="p-2 font-bold text-indigo-800 text-sm">&#9656; '+prov+' <span class="font-normal text-gray-500">('+provRows.length+' รพ. | เฉลี่ย '+provAvg.toFixed(1)+'%'+(pProbs>0?' | <span class=\\"text-red-600\\">'+pProbs+' ต้องติดตาม</span>':'')+')</span></td></tr>';
+      html+=provRows.map(r=>renderHospRow(r)).join('');
+    });
+    tb.innerHTML=html;
+  }else{
+    tb.innerHTML=rows.map(r=>renderHospRow(r)).join('');
+  }
 }
 function doSort(f){if(sf===f)sd*=-1;else{sf=f;sd=-1;}refreshDash();}
 function filterByGrade(g){_gradeFilter=(_gradeFilter===g)?'':g;refreshDash();}
@@ -612,6 +675,25 @@ function mkHistogram(wpcts){
   chHist=new Chart(ctx,{type:'bar',data:{labels:bins,datasets:[{label:'จำนวน รพ.',data:counts,backgroundColor:colors,borderRadius:4}]},
   options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1,precision:0}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
 }
+let chProv=null;
+function mkProvCompare(allHosp,scoreMap,rn){
+  const el=document.getElementById('cProvCompare');if(!el)return;
+  const ctx=el.getContext('2d');if(chProv)chProv.destroy();
+  const datasets=PROVS.map((pv,pi)=>{
+    const pvH=allHosp.filter(h=>h.province===pv);
+    const catAvgs=[0,0,0,0,0,0];let cnt=0;
+    pvH.forEach(h=>{
+      const s=scoreMap[String(h.code)];
+      if(!s)return;
+      const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+      if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{catAvgs[i]+=c.pct;});cnt++;}
+    });
+    return{label:pv,data:cnt>0?catAvgs.map(s=>Math.round(s/cnt)):[0,0,0,0,0,0],backgroundColor:PROV_COLORS[pi]+'40',borderColor:PROV_COLORS[pi],borderWidth:1.5};
+  });
+  chProv=new Chart(ctx,{type:'bar',data:{labels:CAT_LABELS,datasets},
+  options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100,ticks:{stepSize:20}},x:{grid:{display:false}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:10}}}}});
+}
+
 function getPrevRound(rn){
   const rounds=buildRounds();
   if(!rn){/* latest: find 2nd in sorted list */if(rounds.length>=2)return rounds[1];return null;}
@@ -849,7 +931,8 @@ function renderItems(){
 </div>
 <div id="fine_\${k}" class="hidden flex gap-1 mb-2">\${[0,1,2,3,4,5].map(lv=>\`<button id="fb_\${k}_\${lv}" class="fine-btn" onclick="setScore('\${k}',\${lv})">\${lv}</button>\`).join('')}</div>
 <select id="sc_\${k}" class="hidden"><option value="">-</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
-<details class="text-xs"><summary class="cursor-pointer text-indigo-500 hover:text-indigo-700 select-none">ดูคำแนะนำ</summary><div class="mt-1 space-y-0.5 pl-1">\${[0,1,2,3,4,5].map(lv=>\`<div class="score-level" id="lv_\${k}_\${lv}" onclick="setScore('\${k}',\${lv})"><span class="font-bold text-indigo-700">\${lv}:</span> <span class="text-gray-600 nl">\${nlbr(it['s'+lv]||'ไม่มีข้อมูล')}</span></div>\`).join('')}</div></details>
+\${(it.cs&&it.cs.trim())?'<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 text-xs text-blue-800"><div class="font-bold text-blue-700 mb-1">&#9432; แนวคิด</div><div class="nl">'+nlbr(it.cs)+'</div></div>':''}
+<div class="mt-2 space-y-0.5 pl-1 text-xs border-l-2 border-indigo-100 ml-1">\${[0,1,2,3,4,5].map(lv=>\`<div class="score-level" id="lv_\${k}_\${lv}" onclick="setScore('\${k}',\${lv})"><span class="font-bold text-indigo-700">\${lv}:</span> <span class="text-gray-600 nl">\${nlbr(it['s'+lv]||'ไม่มีข้อมูล')}</span></div>\`).join('')}</div>
 </div>\`;
     });
     h+='</div></div>';
@@ -1069,8 +1152,8 @@ function viewRpt(round){
 
 // ==================== EXPORTS ====================
 function exportDashExcel(){
-  const pv=document.getElementById('fProv').value,lv=document.getElementById('fLev').value,rn=document.getElementById('fRnd').value;
-  const lm=getLS(AS,rn);let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);if(lv)fh=fh.filter(h=>h.level===lv);
+  const pv=document.getElementById('fProv').value,rn=document.getElementById('fRnd').value;
+  const lm=getLS(AS,rn);let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);
   const rows=fh.map(h=>{
     const s=lm[String(h.code)]||{};
     const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));

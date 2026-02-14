@@ -1,5 +1,5 @@
 # UI Map: Routes & Selectors
-# R7 Assessment System v4.1 (COMET UX Sprint)
+# R7 Assessment System v4.2 (Dashboard Redesign + Assessment UX)
 
 ## Pages (Routes)
 
@@ -27,9 +27,11 @@ All pages are `<div>` elements toggled by `showPage(id)`. No URL-based routing.
 
 | Element ID | data-testid | Type | Options |
 |------------|-------------|------|---------|
-| `fProv` | `filter-province` | `<select>` | ทั้งหมด, ขอนแก่น, กาฬสินธุ์, มหาสารคาม, ร้อยเอ็ด |
-| `fLev` | `filter-level` | `<select>` | ทั้งหมด, A, S, M1, M2, F1, F2, F3 |
+| `fProv` | `filter-province` | `<select>` | เขต 7 ทั้งหมด, ขอนแก่น, กาฬสินธุ์, มหาสารคาม, ร้อยเอ็ด |
 | `fRnd` | `filter-round` | `<select>` | Dynamic (ล่าสุด + all rounds) |
+| `fSearch` | N/A | `<input>` | Hospital name/code search |
+
+Note: Level filter (`fLev`) removed in v4.2. Hospital level not shown in dashboard.
 
 ## Summary Cards
 
@@ -42,18 +44,28 @@ All pages are `<div>` elements toggled by `showPage(id)`. No URL-based routing.
 | `sumD` | N/A | Grade D count |
 | `sumAvg` | N/A | Average composite |
 
-## Hospital Table
+## Province Overview Cards
+
+| Element ID | Content |
+|------------|---------|
+| `provOverview` | 4 province cards (clickable → filter by province). Shows avg score, grade counts, problem count. Hidden when province filter active. |
+
+## Hospital Heatmap Table
 
 | Element ID | data-testid | Description |
 |------------|-------------|-------------|
+| `hospTable` | N/A | Main hospital table with heatmap |
+| `tblHead` | N/A | Sticky table header |
 | `tblBody` | `hospital-table-body` | Table body with hospital rows |
 
+Columns: รพ. | คะแนน | Δ | ระดับ | วางแผน | เวช. | จัดเก็บ | ธุรกิจ | PP | คจ.
+
 Each row: `onclick="openDetail(code)"` → navigates to pageHospitalDetail.
+Category columns show color-coded heatmap cells (green ≥80%, amber 60-79%, red <60%).
 
-Sortable columns: `doSort('code'|'name'|'province'|'level'|'wpct'|'delta'|'grade')`
+Province grouping: When viewing เขต 7 ทั้งหมด (no province filter), rows are grouped by province with header rows showing province name, count, and average.
 
-Note: Province column hidden dynamically when province filter is active.
-Delta column (Δ ก่อนหน้า) shows change vs previous round.
+Sortable columns: `doSort('name'|'wpct'|'delta'|'grade')`
 
 ## Persistent Info Box
 
@@ -72,10 +84,13 @@ Active filter shows outline. "ล้าง filter" button appears in table heade
 |------------|-------------|-----------|------|
 | `cRadarDash` | — | Radar (6 categories avg) | Dashboard |
 | `cDonutDash` | — | Doughnut (grade dist) | Dashboard |
-| `cHistDash` | `histogram-chart` | Bar (score histogram, 7 bins) | Dashboard |
+| `cHistDash` | `histogram-chart` | Bar (score histogram, 7 bins) | Dashboard (single province) |
+| `cProvCompare` | — | Bar (province comparison, 6 cats) | Dashboard (whole region) |
 | `cRadarDet` | — | Radar (hospital) | Hospital Detail |
 | `cRadarMy` | — | Radar (my hospital) | My Dashboard |
 | `cRadarRpt` | — | Radar (report) | Report |
+
+Note: Histogram shown when filtered to single province. Province comparison chart shown when viewing whole region.
 
 ## Hospital Detail Page
 
@@ -134,9 +149,12 @@ Active filter shows outline. "ล้าง filter" button appears in table heade
 
 Per-item selectors (dynamic):
 - Score select: `#sc_{cat}_{num}` (e.g., `#sc_1_1`)
-- Score level: `#lv_{cat}_{num}_{level}` (e.g., `#lv_1_1_3`)
+- Score level: `#lv_{cat}_{num}_{level}` (e.g., `#lv_1_1_3`) — always visible (no toggle)
 - Top badge (cat4): `#tb_{cat}_{num}` (e.g., `#tb_4_1`)
 - Row container: `#row_{cat}_{num}` (e.g., `#row_1_1`)
+
+Concept box: Shown above scoring buttons when `EC[item].cs` field is non-empty (~10 items).
+Criteria levels 0-5: Always visible (removed `<details>` toggle in v4.2).
 
 ## Report Page
 

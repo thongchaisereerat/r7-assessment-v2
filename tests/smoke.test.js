@@ -125,7 +125,7 @@ const requiredIds = [
   'loadOverlay', 'loadMsg',
   'headerUser', 'btnMyDash', 'btnLogin', 'btnLogout', 'btnImport',
   'sumTotal', 'sumA', 'sumB', 'sumC', 'sumD', 'sumAvg',
-  'fProv', 'fLev', 'fRnd',
+  'fProv', 'fRnd', 'fSearch',
   'cRadarDash', 'cDonutDash', 'tblBody',
   'dName', 'dComp', 'dGrade', 'cRadarDet', 'dCatBars', 'dHist', 'dBest',
   'inUser', 'inPass', 'loginErr', 'btnDoLogin', 'loginSpinner',
@@ -150,7 +150,7 @@ const requiredTestIds = [
   'page-my-dashboard', 'page-assessment', 'page-report',
   'btn-login', 'btn-logout', 'btn-my-dash',
   'btn-save-assessment', 'btn-export-dash',
-  'filter-province', 'filter-level', 'filter-round',
+  'filter-province', 'filter-round',
   'summary-total', 'summary-grade-a', 'summary-grade-b',
   'hospital-table-body', 'login-username', 'login-password',
   'live-composite', 'live-grade', 'assessment-items',
@@ -236,7 +236,7 @@ test('clearGradeFilter function exists', () => {
 });
 
 test('Delta column header in table', () => {
-  assert.ok(html.includes('Δ ก่อนหน้า'));
+  assert.ok(html.includes('>Δ<'));
 });
 
 test('Grade KPI cards are clickable', () => {
@@ -259,12 +259,61 @@ test('Draft restore prompt text exists', () => {
   assert.ok(html.includes('พบแบบร่างที่ยังไม่ได้บันทึก'));
 });
 
-test('Criteria toggle renamed to ดูคำแนะนำ', () => {
-  assert.ok(html.includes('ดูคำแนะนำ'));
+test('Criteria levels always visible (no details toggle)', () => {
+  assert.ok(html.includes('score-level'));
+  assert.ok(!html.includes('<details'));
 });
 
 test('Tailwind CDN pinned to 3.4.17', () => {
   assert.ok(html.includes('cdn.tailwindcss.com/3'));
+});
+
+// --- Dashboard Redesign Features ---
+console.log('\nDashboard Redesign:');
+
+test('Province overview container exists', () => {
+  assert.ok(html.includes('id="provOverview"'));
+});
+
+test('Province comparison chart canvas exists', () => {
+  assert.ok(html.includes('id="cProvCompare"'));
+});
+
+test('mkProvCompare function exists', () => {
+  assert.ok(html.includes('function mkProvCompare('));
+});
+
+test('renderProvOverview function exists', () => {
+  assert.ok(html.includes('function renderProvOverview('));
+});
+
+test('renderHospRow function exists', () => {
+  assert.ok(html.includes('function renderHospRow('));
+});
+
+test('catHeatCell function exists', () => {
+  assert.ok(html.includes('function catHeatCell('));
+});
+
+test('Hospital search input exists', () => {
+  assert.ok(html.includes('id="fSearch"'));
+});
+
+test('Region label in province filter', () => {
+  assert.ok(html.includes('เขต 7 ทั้งหมด'));
+});
+
+test('Heatmap category columns in table header', () => {
+  assert.ok(html.includes('วางแผน'));
+  assert.ok(html.includes('จัดเก็บ'));
+});
+
+test('Concept box pattern in assessment', () => {
+  assert.ok(html.includes('แนวคิด'));
+});
+
+test('Level filter removed', () => {
+  assert.ok(!html.includes('id="fLev"'));
 });
 
 // --- Authorization ---
