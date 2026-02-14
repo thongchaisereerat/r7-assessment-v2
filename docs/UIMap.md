@@ -1,5 +1,5 @@
 # UI Map: Routes & Selectors
-# R7 Assessment System v3.1
+# R7 Assessment System v4.1 (COMET UX Sprint)
 
 ## Pages (Routes)
 
@@ -50,17 +50,32 @@ All pages are `<div>` elements toggled by `showPage(id)`. No URL-based routing.
 
 Each row: `onclick="openDetail(code)"` → navigates to pageHospitalDetail.
 
-Sortable columns: `doSort('code'|'name'|'province'|'level'|'raw'|'composite'|'grade')`
+Sortable columns: `doSort('code'|'name'|'province'|'level'|'wpct'|'delta'|'grade')`
+
+Note: Province column hidden dynamically when province filter is active.
+Delta column (Δ ก่อนหน้า) shows change vs previous round.
+
+## Persistent Info Box
+
+| Element ID | data-testid | Content |
+|------------|-------------|---------|
+| `infoBox` | `info-box` | Grade thresholds + formula + pass threshold (visible on all pages) |
+
+## Grade KPI Card Filters
+
+Grade KPI cards (`sumA`, `sumB`, `sumC`, `sumD`) are clickable → calls `filterByGrade('A'|'B'|'C'|'D')`.
+Active filter shows outline. "ล้าง filter" button appears in table header when filter is active.
 
 ## Charts (Canvas)
 
-| Element ID | Chart Type | Page |
-|------------|-----------|------|
-| `cRadarDash` | Radar (5 dims avg) | Dashboard |
-| `cDonutDash` | Doughnut (grade dist) | Dashboard |
-| `cRadarDet` | Radar (hospital) | Hospital Detail |
-| `cRadarMy` | Radar (my hospital) | My Dashboard |
-| `cRadarRpt` | Radar (report) | Report |
+| Element ID | data-testid | Chart Type | Page |
+|------------|-------------|-----------|------|
+| `cRadarDash` | — | Radar (6 categories avg) | Dashboard |
+| `cDonutDash` | — | Doughnut (grade dist) | Dashboard |
+| `cHistDash` | `histogram-chart` | Bar (score histogram, 7 bins) | Dashboard |
+| `cRadarDet` | — | Radar (hospital) | Hospital Detail |
+| `cRadarMy` | — | Radar (my hospital) | My Dashboard |
+| `cRadarRpt` | — | Radar (report) | Report |
 
 ## Hospital Detail Page
 

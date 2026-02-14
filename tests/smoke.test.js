@@ -39,8 +39,8 @@ test('Valid HTML5 doctype', () => {
   assert.ok(html.startsWith('<!DOCTYPE html>'));
 });
 
-test('Contains v3.1 title', () => {
-  assert.ok(html.includes('R7 Assessment System v3.1'));
+test('Contains v4.0 title', () => {
+  assert.ok(html.includes('R7 Assessment System v4.0'));
 });
 
 test('Includes Tailwind CSS CDN', () => {
@@ -101,12 +101,15 @@ test('CATS constant defined', () => {
 console.log('\nKey Functions:');
 
 const requiredFunctions = [
-  'calcDims', 'calcDimsFromRec', 'processHistorical',
+  'calcDims', 'calcCatScores', 'processHistorical',
   'showPage', 'refreshDash', 'openDetail',
   'doLogin', 'doLogout', 'loadMyDash',
   'startAssess', 'editAssess', 'renderItems', 'saveAssess',
   'showReport', 'exportDashExcel', 'exportMyExcel', 'exportRptExcel',
-  'buildRounds', 'collectForm', 'updLive'
+  'buildRounds', 'collectForm', 'updLive',
+  'generateAnalysis', 'renderAnalysisHTML', 'renderActionPlan',
+  'toggleCat4', 'updCat4UI', 'restoreCat4', 'autoSave',
+  'gradeFromPct', 'gradeLabel'
 ];
 
 requiredFunctions.forEach(fn => {
@@ -150,13 +153,118 @@ const requiredTestIds = [
   'filter-province', 'filter-level', 'filter-round',
   'summary-total', 'summary-grade-a', 'summary-grade-b',
   'hospital-table-body', 'login-username', 'login-password',
-  'live-composite', 'live-grade', 'assessment-items'
+  'live-composite', 'live-grade', 'assessment-items',
+  'autosave-msg', 'action-plan', 'analysis-section', 'btn-start-assess'
 ];
 
 requiredTestIds.forEach(tid => {
   test(`data-testid="${tid}" exists`, () => {
     assert.ok(html.includes(`data-testid="${tid}"`), `Missing data-testid: ${tid}`);
   });
+});
+
+// --- Phase 2-3 Feature Checks ---
+console.log('\nPhase 2-3 Features:');
+
+test('Cat4 choose-2 checkbox pattern exists', () => {
+  assert.ok(html.includes('c4-ck'));
+});
+
+test('Cat4 choose-2 state variable exists', () => {
+  assert.ok(html.includes('cat4Sel'));
+});
+
+test('Cat4 unsel CSS class exists', () => {
+  assert.ok(html.includes('.c4-unsel'));
+});
+
+test('Grade thresholds 90/80/70 in gradeFromPct', () => {
+  assert.ok(html.includes('>=90'));
+  assert.ok(html.includes('>=80'));
+  assert.ok(html.includes('>=70'));
+});
+
+test('PASS/FAIL text in analysis', () => {
+  assert.ok(html.includes('ผ่านเกณฑ์'));
+  assert.ok(html.includes('ไม่ผ่านเกณฑ์'));
+});
+
+test('Action Plan table with quick-wins', () => {
+  assert.ok(html.includes('QUICK_WINS'));
+  assert.ok(html.includes('qw-chip'));
+});
+
+test('Autosave message pattern', () => {
+  assert.ok(html.includes('บันทึกร่างล่าสุดเมื่อ'));
+});
+
+test('Draft/Submitted badges exist', () => {
+  assert.ok(html.includes('submitted-badge'));
+  assert.ok(html.includes('draft-badge'));
+});
+
+test('Raw score shown as secondary in report', () => {
+  assert.ok(html.includes('rRaw'));
+  assert.ok(html.includes('คะแนนดิบ'));
+});
+
+// --- COMET UX Features (new) ---
+console.log('\nCOMET UX Features:');
+
+test('Histogram chart canvas exists', () => {
+  assert.ok(html.includes('id="cHistDash"'));
+});
+
+test('data-testid="histogram-chart" exists', () => {
+  assert.ok(html.includes('data-testid="histogram-chart"'));
+});
+
+test('mkHistogram function exists', () => {
+  assert.ok(html.includes('function mkHistogram('));
+});
+
+test('getPrevRound function exists', () => {
+  assert.ok(html.includes('function getPrevRound('));
+});
+
+test('filterByGrade function exists', () => {
+  assert.ok(html.includes('function filterByGrade('));
+});
+
+test('clearGradeFilter function exists', () => {
+  assert.ok(html.includes('function clearGradeFilter('));
+});
+
+test('Delta column header in table', () => {
+  assert.ok(html.includes('Δ ก่อนหน้า'));
+});
+
+test('Grade KPI cards are clickable', () => {
+  assert.ok(html.includes("filterByGrade('A')"));
+  assert.ok(html.includes("filterByGrade('D')"));
+});
+
+test('Info box with grade thresholds exists', () => {
+  assert.ok(html.includes('id="infoBox"'));
+  assert.ok(html.includes('data-testid="info-box"'));
+});
+
+test('Info box shows thresholds A≥90 B≥80 C≥70', () => {
+  assert.ok(html.includes('A &ge;90'));
+  assert.ok(html.includes('B &ge;80'));
+  assert.ok(html.includes('C &ge;70'));
+});
+
+test('Draft restore prompt text exists', () => {
+  assert.ok(html.includes('พบแบบร่างที่ยังไม่ได้บันทึก'));
+});
+
+test('Criteria toggle renamed to ดูคำแนะนำ', () => {
+  assert.ok(html.includes('ดูคำแนะนำ'));
+});
+
+test('Tailwind CDN pinned to 3.4.17', () => {
+  assert.ok(html.includes('cdn.tailwindcss.com/3'));
 });
 
 // --- Authorization ---

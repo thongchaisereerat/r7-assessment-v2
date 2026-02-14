@@ -1,5 +1,6 @@
-// Build R7 Assessment System v3.1
-// Combines embedded data + updated code into single index.html
+// Build R7 Assessment System v4.0
+// Major overhaul: weighted 0-100 scoring, new grade thresholds, big-button UX,
+// auto-analysis, action plan, submit state, ISS-008 fix
 const fs = require('fs');
 
 const criteriaJS = fs.readFileSync('./embedded_criteria.js','utf8').trim();
@@ -10,17 +11,22 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>R7 Assessment System v3.1</title>
-<script src="https://cdn.tailwindcss.com"><\/script>
+<title>R7 Assessment System v4.0</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>
 <style>
 .hidden{display:none!important}
-.grade-a{background:#10b981;color:#fff}.grade-b{background:#3b82f6;color:#fff}.grade-c{background:#f59e0b;color:#fff}.grade-d{background:#ef4444;color:#fff}
+.grade-excellent{background:#10b981;color:#fff}.grade-good{background:#3b82f6;color:#fff}.grade-fair{background:#f59e0b;color:#fff}.grade-improve{background:#ef4444;color:#fff}
 .dim-card{transition:transform .2s}.dim-card:hover{transform:translateY(-2px)}
 .cat-1{border-left:4px solid #3b82f6;background:#eff6ff}.cat-2{border-left:4px solid #22c55e;background:#f0fdf4}.cat-3{border-left:4px solid #8b5cf6;background:#f5f3ff}.cat-4{border-left:4px solid #f59e0b;background:#fffbeb}.cat-5{border-left:4px solid #ec4899;background:#fdf2f8}.cat-6{border-left:4px solid #ef4444;background:#fef2f2}
+.big-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;border:2px solid transparent;min-width:120px;gap:6px}
+.big-btn-yes{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}.big-btn-yes:hover{background:#dcfce7}.big-btn-yes.active{background:#16a34a;color:#fff;border-color:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,.3)}
+.big-btn-no{background:#fef2f2;color:#dc2626;border-color:#fecaca}.big-btn-no:hover{background:#fee2e2}.big-btn-no.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 2px 8px rgba(220,38,38,.3)}
+.fine-btn{width:38px;height:38px;border-radius:8px;border:2px solid #e5e7eb;font-weight:700;font-size:14px;cursor:pointer;transition:all .12s;background:#fff}.fine-btn:hover{background:#e0e7ff;border-color:#818cf8}.fine-btn.active{background:#4f46e5;color:#fff;border-color:#4f46e5}
 .score-level{cursor:pointer;padding:6px 10px;border-radius:6px;margin:2px 0;transition:all .15s}.score-level:hover{background:#dbeafe}.score-level.selected{background:#3b82f6;color:#fff}
 .top-badge{background:#f59e0b;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700;margin-left:6px;vertical-align:middle}
+.submitted-badge{background:#10b981;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700}.draft-badge{background:#f59e0b;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700}
 .fade-in{animation:fadeIn .3s ease}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .sortable{cursor:pointer;user-select:none}.sortable:hover{color:#4f46e5}
 .progress-bar-inner{transition:width .4s ease}
@@ -29,6 +35,9 @@ const html = `<!DOCTYPE html>
 .overlay-loader{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;display:flex;align-items:center;justify-content:center}
 .overlay-loader .spinner{width:48px;height:48px;border:4px solid #e5e7eb;border-radius:50%;border-top-color:#4f46e5;animation:spin .8s linear infinite}
 .nl{white-space:pre-line}
+.qw-chip{display:inline-block;padding:4px 12px;border-radius:9999px;background:#eff6ff;color:#3b82f6;font-size:12px;cursor:pointer;border:1px solid #bfdbfe;transition:all .15s;margin:2px}.qw-chip:hover{background:#3b82f6;color:#fff}
+.c4-unsel .big-btn,.c4-unsel .fine-btn,.c4-unsel details,.c4-unsel .score-level{pointer-events:none;opacity:.25}
+.c4-ck{width:18px;height:18px;accent-color:#d97706;cursor:pointer}
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -39,7 +48,7 @@ const html = `<!DOCTYPE html>
 <!-- HEADER -->
 <header class="bg-gradient-to-r from-indigo-800 to-blue-700 text-white shadow-lg sticky top-0 z-50">
 <div class="container mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
-<h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v3.1</h1>
+<h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v4.0</h1>
 <div class="flex items-center gap-2 flex-wrap">
 <span id="headerUser" class="hidden text-sm opacity-90"></span>
 <button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">Dashboard รพ.</button>
@@ -49,15 +58,22 @@ const html = `<!DOCTYPE html>
 </div>
 </header>
 
+<!-- INFO BOX: Grade thresholds + formula (persistent on all pages) -->
+<div id="infoBox" data-testid="info-box" class="bg-indigo-50 border-b border-indigo-200 text-xs text-indigo-700 text-center py-1.5 px-4">
+<span class="font-bold">เกณฑ์ระดับ:</span> A &ge;90 | B &ge;80 | C &ge;70 | D &lt;70 &nbsp;&bull;&nbsp;
+<span class="font-bold">คะแนน:</span> คะแนนรวม &divide; คะแนนเต็ม &times; 100 (6 หมวด) &nbsp;&bull;&nbsp;
+<span class="font-bold">ผ่านเกณฑ์:</span> &ge;80%
+</div>
+
 <!-- PAGE: PUBLIC DASHBOARD -->
 <div id="pageDashboard" data-testid="page-dashboard" class="container mx-auto px-4 py-6 fade-in">
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">รพ.ทั้งหมด</div><div id="sumTotal" data-testid="summary-total" class="text-2xl font-bold text-indigo-600">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade A</div><div id="sumA" data-testid="summary-grade-a" class="text-2xl font-bold text-emerald-500">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade B</div><div id="sumB" data-testid="summary-grade-b" class="text-2xl font-bold text-blue-500">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade C</div><div id="sumC" class="text-2xl font-bold text-amber-500">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">Grade D</div><div id="sumD" class="text-2xl font-bold text-red-500">-</div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนเฉลี่ย</div><div id="sumAvg" class="text-2xl font-bold text-purple-600">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center cursor-pointer hover:ring-2 hover:ring-emerald-400 transition" onclick="filterByGrade('A')"><div class="text-gray-500 text-xs mb-1">ดีเยี่ยม (A)</div><div id="sumA" data-testid="summary-grade-a" class="text-2xl font-bold text-emerald-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center cursor-pointer hover:ring-2 hover:ring-blue-400 transition" onclick="filterByGrade('B')"><div class="text-gray-500 text-xs mb-1">ดี (B)</div><div id="sumB" data-testid="summary-grade-b" class="text-2xl font-bold text-blue-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center cursor-pointer hover:ring-2 hover:ring-amber-400 transition" onclick="filterByGrade('C')"><div class="text-gray-500 text-xs mb-1">พอใช้ (C)</div><div id="sumC" class="text-2xl font-bold text-amber-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center cursor-pointer hover:ring-2 hover:ring-red-400 transition" onclick="filterByGrade('D')"><div class="text-gray-500 text-xs mb-1">ต้องปรับปรุง (D)</div><div id="sumD" class="text-2xl font-bold text-red-500">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนเฉลี่ย (%)</div><div id="sumAvg" class="text-2xl font-bold text-purple-600">-</div></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-end">
 <div><label class="text-gray-500 text-xs block mb-1">จังหวัด</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
@@ -69,8 +85,11 @@ const html = `<!DOCTYPE html>
 </div>
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">Radar: เฉลี่ย 5 มิติ</h3><div style="position:relative;height:280px"><canvas id="cRadarDash"></canvas></div></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">สัดส่วน Grade</h3><div style="position:relative;height:280px"><canvas id="cDonutDash"></canvas></div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">คะแนนเฉลี่ย 6 หมวด</h3><div style="position:relative;height:280px"><canvas id="cRadarDash"></canvas></div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">สัดส่วนระดับ</h3><div style="position:relative;height:280px"><canvas id="cDonutDash"></canvas></div></div>
+</div>
+<div class="grid grid-cols-1 gap-6 mb-6">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">การกระจายคะแนน (Histogram)</h3><div style="position:relative;height:220px"><canvas id="cHistDash" data-testid="histogram-chart"></canvas></div></div>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
 <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>
@@ -78,10 +97,10 @@ const html = `<!DOCTYPE html>
 <th class="p-3 text-left sortable" onclick="doSort('name')">ชื่อ รพ.</th>
 <th class="p-3 text-left sortable" onclick="doSort('province')">จังหวัด</th>
 <th class="p-3 text-center sortable" onclick="doSort('level')">ระดับ</th>
-<th class="p-3 text-center sortable" onclick="doSort('raw')">คะแนนรวม</th>
-<th class="p-3 text-center sortable" onclick="doSort('composite')">Composite</th>
-<th class="p-3 text-center sortable" onclick="doSort('grade')">Grade</th>
-</tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="7" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
+<th class="p-3 text-center sortable" onclick="doSort('wpct')">คะแนน (%)</th>
+<th class="p-3 text-center sortable" onclick="doSort('delta')">Δ ก่อนหน้า</th>
+<th class="p-3 text-center sortable" onclick="doSort('grade')">ระดับผลประเมิน</th>
+</tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="6" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
 </div>
 </div>
 
@@ -91,11 +110,12 @@ const html = `<!DOCTYPE html>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="dName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="dProv" class="text-gray-500 text-sm mb-2">-</p><span id="dLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div class="text-gray-500 text-xs mb-1">Composite</div><div id="dComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div id="dGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนถ่วงน้ำหนัก</div><div id="dComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div class="text-gray-400 text-xs mb-1">/ 100</div><div id="dGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold">-</div></div>
 </div>
 <div class="lg:col-span-2 space-y-4">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">Radar 5 มิติ</h4><div style="position:relative;height:260px"><canvas id="cRadarDet"></canvas></div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">Radar 6 หมวด</h4><div style="position:relative;height:260px"><canvas id="cRadarDet"></canvas></div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">คะแนนรายหมวด</h4><div id="dCatBars" class="space-y-2"></div></div>
+<div id="dAnalysis" data-testid="analysis-section" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"></div>
 </div>
 </div>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -121,24 +141,17 @@ const html = `<!DOCTYPE html>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="mName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="mProv" class="text-gray-500 text-sm mb-2">-</p><span id="mLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div class="text-gray-500 text-xs mb-1">Composite Score</div><div id="mComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div id="mGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนถ่วงน้ำหนัก</div><div id="mComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div class="text-gray-400 text-xs mb-1">/ 100</div><div id="mGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200">-</div></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><div style="position:relative;height:220px"><canvas id="cRadarMy"></canvas></div></div>
 </div>
 <div class="lg:col-span-2 space-y-4">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-<h4 class="font-bold text-gray-700 mb-3 text-sm">คะแนนรายมิติ</h4>
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-<div class="dim-card bg-emerald-50 p-3 rounded-lg text-center border border-emerald-100"><div class="text-emerald-600 font-bold text-xl" id="mDR">-</div><div class="text-gray-500 text-xs">Revenue 35%</div></div>
-<div class="dim-card bg-amber-50 p-3 rounded-lg text-center border border-amber-100"><div class="text-amber-600 font-bold text-xl" id="mDCo">-</div><div class="text-gray-500 text-xs">Cost 15%</div></div>
-<div class="dim-card bg-blue-50 p-3 rounded-lg text-center border border-blue-100"><div class="text-blue-600 font-bold text-xl" id="mDD">-</div><div class="text-gray-500 text-xs">Discipline 30%</div></div>
-<div class="dim-card bg-violet-50 p-3 rounded-lg text-center border border-violet-100"><div class="text-violet-600 font-bold text-xl" id="mDCl">-</div><div class="text-gray-500 text-xs">Collection 15%</div></div>
-<div class="dim-card bg-rose-50 p-3 rounded-lg text-center border border-rose-100"><div class="text-rose-600 font-bold text-xl" id="mDP">-</div><div class="text-gray-500 text-xs">Process 5%</div></div>
-</div>
-</div>
+<div id="mAnalysis" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">Best Practice (ระดับเดียวกัน)</h4><div id="mBest" class="text-gray-500 text-sm">-</div></div>
+<div id="mPrimaryBtn" class="text-center">
+<button onclick="startOrResume()" data-testid="btn-start-assess" class="bg-indigo-600 hover:bg-indigo-700 text-white py-4 px-10 rounded-xl font-bold text-lg transition shadow-md hover:shadow-lg">เริ่มการประเมิน</button>
+</div>
 <div class="flex gap-3">
-<button onclick="startAssess()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold transition text-sm">ทำแบบประเมินใหม่</button>
-<button onclick="exportMyExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold transition text-sm">Export Excel</button>
+<button onclick="exportMyExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold transition text-sm">Export Excel</button>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">ประวัติการประเมิน</h4><div id="mHist" class="text-gray-500 text-sm">-</div></div>
 </div>
@@ -152,16 +165,19 @@ const html = `<!DOCTYPE html>
 <h3 class="text-lg font-bold text-gray-800">แบบประเมินมาตรฐานการเงินการคลัง</h3>
 <button onclick="showPage('pageMyDashboard')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
 <div><label class="block text-gray-600 text-xs mb-1">รอบประเมิน</label><select id="aRound" onchange="loadDraft()" class="w-full p-2 border border-gray-200 rounded-lg text-sm"></select></div>
 <div><label class="block text-gray-600 text-xs mb-1">วันที่ประเมิน</label><input type="date" id="aDate" class="w-full p-2 border border-gray-200 rounded-lg text-sm"></div>
-<div class="text-center"><div class="text-gray-500 text-xs mb-1">Live Score</div><span id="lComp" data-testid="live-composite" class="text-3xl font-bold text-indigo-600">0</span><span id="lGrd" data-testid="live-grade" class="ml-1 px-2 py-0.5 rounded text-xs font-bold bg-gray-200">-</span></div>
-<div><div class="text-gray-500 text-xs mb-1">ความคืบหน้า</div><div class="w-full bg-gray-200 rounded-full h-4 mt-1 overflow-hidden"><div id="aBar" class="progress-bar-inner bg-indigo-500 h-4 rounded-full" style="width:0%"></div></div><div id="aProg" class="text-xs text-gray-500 mt-1">0/33</div></div>
+<div class="text-center"><div class="text-gray-500 text-xs mb-1">คะแนน (%)</div><span id="lComp" data-testid="live-composite" class="text-3xl font-bold text-indigo-600">0</span><span id="lGrd" data-testid="live-grade" class="ml-1 px-2 py-0.5 rounded text-xs font-bold bg-gray-200">-</span></div>
+<div><div class="text-gray-500 text-xs mb-1">ความคืบหน้า</div><div class="w-full bg-gray-200 rounded-full h-4 mt-1 overflow-hidden"><div id="aBar" class="progress-bar-inner bg-indigo-500 h-4 rounded-full" style="width:0%"></div></div><div id="aProg" class="text-xs text-gray-500 mt-1">0/30</div></div>
 </div>
+<!-- Category progress summary -->
+<div id="aCatProg" class="flex flex-wrap gap-2 mb-4 text-xs"></div>
+<div id="autoSaveMsg" data-testid="autosave-msg" class="text-xs text-gray-400 mb-4"></div>
 <div id="aItems" data-testid="assessment-items"></div>
-<div class="mt-6 text-center">
-<button onclick="saveAssess()" id="btnSave" data-testid="btn-save-assessment" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 mx-auto"><span>บันทึกการประเมิน</span><span id="saveSpinner" class="loader hidden"></span></button>
-<p id="saveMsg" class="mt-2 text-gray-400 text-sm"></p>
+<div class="mt-6 flex flex-col items-center gap-3">
+<button onclick="saveAssess()" id="btnSave" data-testid="btn-save-assessment" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2"><span>บันทึกและส่งการประเมิน</span><span id="saveSpinner" class="loader hidden"></span></button>
+<p id="saveMsg" class="text-gray-400 text-sm"></p>
 </div>
 </div>
 </div>
@@ -172,12 +188,15 @@ const html = `<!DOCTYPE html>
 <h3 class="text-lg font-bold text-gray-800 mb-1">รายงานผลประเมิน</h3>
 <p id="rSub" class="text-gray-500 text-sm mb-4">-</p>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-<div class="text-center"><div class="text-gray-500 text-xs mb-1">Composite Score</div><div id="rComp" class="text-5xl font-bold text-indigo-600 mb-1">-</div><div id="rGrade" class="inline-block px-4 py-1 rounded-full text-sm font-bold">-</div></div>
+<div class="text-center"><div class="text-gray-500 text-xs mb-1">คะแนนถ่วงน้ำหนัก</div><div id="rComp" class="text-5xl font-bold text-indigo-600 mb-1">-</div><div class="text-gray-400 text-xs mb-1">/ 100</div><div id="rGrade" class="inline-block px-4 py-1 rounded-full text-sm font-bold">-</div><div id="rRaw" class="text-gray-400 text-xs mt-2">-</div></div>
 <div style="position:relative;height:240px"><canvas id="cRadarRpt"></canvas></div>
 </div>
+<div id="rCatTable" class="mb-6"></div>
+<div id="rAnalysis" class="mb-6"></div>
 <div class="mb-6"><h4 class="font-bold text-emerald-700 mb-2 text-sm">จุดแข็ง (คะแนน 4-5)</h4><div id="rStr" class="space-y-2"></div></div>
 <div class="mb-6"><h4 class="font-bold text-red-600 mb-2 text-sm">จุดควรปรับปรุง (คะแนน 0-2)</h4><div id="rWeak" class="space-y-2"></div></div>
 <div class="mb-6"><h4 class="font-bold text-indigo-700 mb-2 text-sm">เปรียบเทียบกับรอบก่อน</h4><div id="rDelta" class="text-gray-500 text-sm">-</div></div>
+<div id="rActionPlan" data-testid="action-plan" class="mb-6"></div>
 <div class="flex gap-3 justify-center mt-4">
 <button onclick="exportRptExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition">Export Excel</button>
 <button onclick="showPage('pageMyDashboard')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition">กลับ Dashboard</button>
@@ -199,70 +218,171 @@ const html = `<!DOCTYPE html>
 </div>
 
 <script>
-// ==================== EMBEDDED CRITERIA (from original template) ====================
+// ==================== EMBEDDED DATA ====================
 ${criteriaJS}
-
-// ==================== HISTORICAL SCORES (from cleaned Excel) ====================
 ${scoresJS}
 
 // ==================== CONSTANTS ====================
 const CATS=[
-{id:1,nm:"หมวด 1: การนำและการวางแผนการเงิน (6 ข้อ)",css:"cat-1",col:"#3b82f6",mx:30},
-{id:2,nm:"หมวด 2: ระบบเวชระเบียน (2 ข้อ)",css:"cat-2",col:"#22c55e",mx:10},
-{id:3,nm:"หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ (14 ข้อ)",css:"cat-3",col:"#8b5cf6",mx:70},
-{id:4,nm:"หมวด 4: แผนธุรกิจ - ระบบเลือก Top 2 (5 ข้อ)",css:"cat-4",col:"#f59e0b",mx:10},
-{id:5,nm:"หมวด 5: PP Fee Schedule (1 ข้อ)",css:"cat-5",col:"#ec4899",mx:5},
-{id:6,nm:"หมวด 6: การควบคุมรายจ่าย (5 ข้อ)",css:"cat-6",col:"#ef4444",mx:25}
+{id:1,nm:"หมวด 1: การนำและการวางแผนการเงิน",sn:"วางแผน",css:"cat-1",col:"#3b82f6",mx:30,wt:"20.0%"},
+{id:2,nm:"หมวด 2: ระบบเวชระเบียน",sn:"เวชระเบียน",css:"cat-2",col:"#22c55e",mx:10,wt:"6.7%"},
+{id:3,nm:"หมวด 3: ศูนย์จัดเก็บรายได้คุณภาพ",sn:"จัดเก็บรายได้",css:"cat-3",col:"#8b5cf6",mx:70,wt:"46.7%"},
+{id:4,nm:"หมวด 4: แผนธุรกิจ (เลือก Top 2)",sn:"แผนธุรกิจ",css:"cat-4",col:"#f59e0b",mx:10,wt:"6.7%"},
+{id:5,nm:"หมวด 5: PP Fee Schedule",sn:"PP Fee",css:"cat-5",col:"#ec4899",mx:5,wt:"3.3%"},
+{id:6,nm:"หมวด 6: การควบคุมรายจ่าย",sn:"ควบคุมจ่าย",css:"cat-6",col:"#ef4444",mx:25,wt:"16.7%"}
+];
+
+const CAT_LABELS=['วางแผน','เวชระเบียน','จัดเก็บรายได้','แผนธุรกิจ','PP Fee','ควบคุมจ่าย'];
+
+const QUICK_WINS=[
+{item:'1.1',cat:1,title:'แผนเงินบำรุง',time:'<1 เดือน',action:'ออกคำสั่ง คกก. + รวบรวมข้อมูล 3 ปี + ประชุมจัดทำแผน'},
+{item:'2.1',cat:2,title:'ทบทวนเวชระเบียน',time:'<2 เดือน',action:'ทำ Template รายงาน + กำหนดความถี่ทบทวน + เสนอผู้บริหาร'},
+{item:'3.2',cat:3,title:'โครงสร้างศูนย์จัดเก็บ',time:'<2 เดือน',action:'ออกคำสั่ง คกก. + Flowchart 5 กระบวนการ + ประชุมไตรมาส'},
+{item:'3.11',cat:3,title:'ส่งรายงานบัญชี',time:'<1 เดือน',action:'คำสั่งมอบหมาย + กำหนดส่งก่อนวันที่ 5 ของเดือน'},
+{item:'6.1-6.5',cat:6,title:'มาตรการลดค่าใช้จ่าย',time:'<2 เดือน',action:'ออกมาตรการลายลักษณ์อักษร + สื่อสาร + ติดตามรายเดือน'},
+{item:'5.1',cat:5,title:'PP Fee Schedule',time:'<3 เดือน',action:'แต่งตั้ง คกก. + Flowchart 22 บริการ + แผนปฏิบัติการ'}
 ];
 
 const API='https://script.google.com/macros/s/AKfycbzYRBtTbeZZ_w4yM15PlqNgvAFNU1lj98mZwgpaXqTVPQxkS7SgvyQPVJHNvkUkzT4hNA/exec';
-let CU=null,CH=null,AH=[],AS=[],sf='composite',sd=-1,_rd=null,_rptD=null,_rptDm=null;
+let CU=null,CH=null,AH=[],AS=[],sf='wpct',sd=-1,_rd=null,_rptD=null,_rptDm=null,_rptCat=null,_gradeFilter='';
+let cat4Sel=new Set();
 let chRD=null,chDD=null,chDet=null,chMy=null,chRpt=null;
 
-// ==================== PROCESS HISTORICAL SCORES ====================
-function processHistorical(){
-  // Convert HS records into the AS format expected by the dashboard
-  const processed=[];
-  HS.forEach(rec=>{
-    const dm=calcDimsFromRec(rec);
-    processed.push({
-      hospital_code:String(rec.h),
-      round:rec.r,
-      date:'',
-      total_raw:rec.ts||0,
-      composite:dm.composite,
-      grade:dm.grade,
-      dim_revenue:dm.revenue,
-      dim_cost:dm.cost,
-      dim_discipline:dm.discipline,
-      dim_collection:dm.collection,
-      dim_process:dm.process,
-      updated_at:rec.r,
-      _src:'hist',
-      _rec:rec
-    });
+// ==================== GRADE SYSTEM (new thresholds per Excel) ====================
+function gradeFromPct(pct){return pct>=90?'A':pct>=80?'B':pct>=70?'C':'D';}
+function gradeLabel(g){return g==='A'?'ดีเยี่ยม':g==='B'?'ดี':g==='C'?'พอใช้':'ต้องปรับปรุง';}
+function gradeClass(g){return g==='A'?'grade-excellent':g==='B'?'grade-good':g==='C'?'grade-fair':'grade-improve';}
+function gradeText(g){return gradeLabel(g)+' ('+g+')';}
+
+// ==================== SCORING: CATEGORY-BASED (primary) ====================
+function calcCatScores(d, level){
+  const results=[];let totalRaw=0,totalMax=0;
+  CATS.forEach(cat=>{
+    const its=EC.filter(x=>x.cat===cat.id);
+    let raw=0,mx=cat.mx;
+    if(cat.id===4){
+      // Cat4: score all 5, pick top 2
+      const c4=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
+      c4.sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
+      const t2=[c4[0],c4[1]];
+      raw=t2[0].s+t2[1].s;
+      results.push({id:cat.id,raw,mx,pct:mx>0?Math.round(raw/mx*1000)/10:0,top2:[c4[0].k,c4[1].k]});
+    }else if(cat.id===6){
+      // Cat6: exclude 6.4 if level not M1/M2/A (ISS-008 fix)
+      const lv64=!level||['M1','M2','A'].includes(level);
+      its.forEach(it=>{
+        const k=ik(it.c);
+        if(k==='6_4'&&!lv64){mx-=5;return;}
+        raw+=Number(d['i_'+k]||0);
+      });
+      results.push({id:cat.id,raw,mx,pct:mx>0?Math.round(raw/mx*1000)/10:0});
+    }else{
+      its.forEach(it=>raw+=Number(d['i_'+it.c.replace('.','_')]||0));
+      results.push({id:cat.id,raw,mx,pct:mx>0?Math.round(raw/mx*1000)/10:0});
+    }
+    totalRaw+=raw;totalMax+=mx;
   });
-  return processed;
+  const wpct=totalMax>0?Math.round(totalRaw/totalMax*1000)/10:0;
+  const grade=gradeFromPct(wpct);
+  // Enforce cap: totalRaw cannot exceed totalMax
+  if(totalRaw>totalMax)totalRaw=totalMax;
+  return{categories:results,totalRaw,totalMax,wpct,grade,top2:results.find(c=>c.id===4)?.top2||[]};
 }
 
-function calcDimsFromRec(d){
+// ==================== SCORING: 5-DIMENSION (for radar chart) ====================
+function calcDims(d,level){
   const c4=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
   c4.sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
   const t2=[c4[0].k,c4[1].k];
   let rS=0;t2.forEach(k=>rS+=Number(d['i_'+k]||0));rS+=Number(d.i_5_1||0);
-  let coS=0;['6_1','6_2','6_3','6_4','6_5'].forEach(k=>coS+=Number(d['i_'+k]||0));
+  const lv64=!level||['M1','M2','A'].includes(level);
+  let coS=0,coMax=25;['6_1','6_2','6_3','6_4','6_5'].forEach(k=>{if(k==='6_4'&&!lv64){coMax-=5;return;}coS+=Number(d['i_'+k]||0);});
   let diS=0;['1_3','1_4','1_5','1_6','3_12','3_13'].forEach(k=>diS+=Number(d['i_'+k]||0));
   let clS=0;['3_7','3_8','3_9','3_10','3_11'].forEach(k=>clS+=Number(d['i_'+k]||0));
   let prS=0;['1_1','1_2','2_1','2_2','3_1','3_2','3_3','3_4','3_5','3_6','3_14'].forEach(k=>prS+=Number(d['i_'+k]||0));
-  const rv=Math.round(rS/15*100),co=Math.round(coS/25*100),di=Math.round(diS/30*100),cl=Math.round(clS/25*100),pr=Math.round(prS/55*100);
-  const cp=Math.round(rv*.35+co*.15+di*.30+cl*.15+pr*.05);
-  return{revenue:rv,cost:co,discipline:di,collection:cl,process:pr,composite:cp,grade:cg(cp),top2:t2};
+  const rv=Math.round(rS/15*100),co=Math.round(coS/coMax*100),di=Math.round(diS/30*100),cl=Math.round(clS/25*100),pr=Math.round(prS/55*100);
+  return{revenue:rv,cost:co,discipline:di,collection:cl,process:pr,top2:t2};
+}
+
+// ==================== ANALYSIS GENERATION ====================
+function generateAnalysis(catScores){
+  const cats=catScores.categories;
+  const sorted=[...cats].sort((a,b)=>a.pct-b.pct);
+  const below70=cats.filter(c=>c.pct<70);
+  const below80=cats.filter(c=>c.pct<80);
+  const passed=catScores.wpct>=80;
+  const numItems=cats.reduce((s,c)=>{const its=EC.filter(x=>x.cat===c.id);return s+(c.id===4?2:c.id===6?(c.mx/5):its.length);},0);
+  const avgPerItem=numItems>0?(catScores.totalRaw/numItems).toFixed(2):'0';
+  return{passed,wpct:catScores.wpct,grade:catScores.grade,below70Count:below70.length,below80Count:below80.length,
+    urgent:sorted[0],secondary:sorted[1],avgPerItem};
+}
+
+function renderAnalysisHTML(an){
+  const statusColor=an.passed?'text-emerald-700 bg-emerald-50 border-emerald-200':'text-red-700 bg-red-50 border-red-200';
+  const statusIcon=an.passed?'&#10004;':'&#10008;';
+  const u=CATS.find(c=>c.id===an.urgent.id);
+  const s=CATS.find(c=>c.id===an.secondary.id);
+  let h='<h4 class="font-bold text-gray-700 mb-3 text-sm">การวิเคราะห์อัตโนมัติ</h4>';
+  h+='<div class="'+statusColor+' border rounded-lg p-3 mb-3 text-sm font-bold">'+statusIcon+' ผลการประเมิน: '+gradeText(an.grade)+' ('+an.wpct.toFixed(1)+'%) — '+(an.passed?'ผ่านเกณฑ์':'ไม่ผ่านเกณฑ์ (ต้อง &ge;80%)')+'</div>';
+  if(an.below70Count>0)h+='<div class="text-red-600 text-sm mb-2">&#9888; มี '+an.below70Count+' หมวดที่ต่ำกว่า 70%</div>';
+  h+='<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
+  h+='<div class="bg-red-50 border border-red-200 rounded-lg p-3"><div class="text-red-600 font-bold text-xs mb-1">จุดต้องพัฒนาเร่งด่วน</div><div class="text-sm font-bold">'+(u?u.sn:'—')+'</div><div class="text-xs text-gray-600">'+(an.urgent?an.urgent.pct.toFixed(1)+'%':'—')+'</div></div>';
+  h+='<div class="bg-amber-50 border border-amber-200 rounded-lg p-3"><div class="text-amber-600 font-bold text-xs mb-1">ลำดับรอง</div><div class="text-sm font-bold">'+(s?s.sn:'—')+'</div><div class="text-xs text-gray-600">'+(an.secondary?an.secondary.pct.toFixed(1)+'%':'—')+'</div></div>';
+  h+='<div class="bg-blue-50 border border-blue-200 rounded-lg p-3"><div class="text-blue-600 font-bold text-xs mb-1">คะแนนเฉลี่ยต่อข้อ</div><div class="text-sm font-bold">'+an.avgPerItem+'</div><div class="text-xs text-gray-600">จาก 5.00</div></div>';
+  h+='</div>';
+  return h;
+}
+
+// ==================== ACTION PLAN ====================
+function renderActionPlan(catScores,roundKey){
+  const lsKey=CH?'r7_ap_'+CH.code+'_'+roundKey:'';
+  const saved=lsKey?lg(lsKey)||{}:{};
+  let h='<h4 class="font-bold text-gray-700 mb-3 text-sm">Action Plan</h4>';
+  h+='<div class="overflow-x-auto"><table class="w-full text-xs border"><thead class="bg-gray-50"><tr><th class="border p-2 text-left">หมวด</th><th class="border p-2 text-center w-12">ได้</th><th class="border p-2 text-center w-12">เต็ม</th><th class="border p-2 text-center w-16">%</th><th class="border p-2 text-center w-20">ระดับ</th><th class="border p-2 text-center w-12">Gap</th><th class="border p-2 text-left" style="min-width:200px">แผนดำเนินการ</th><th class="border p-2 text-left w-24">ผู้รับผิดชอบ</th><th class="border p-2 text-left w-24">กำหนดเสร็จ</th></tr></thead><tbody>';
+  catScores.categories.forEach(c=>{
+    const cat=CATS.find(x=>x.id===c.id);
+    const g=gradeFromPct(c.pct);
+    const gap=c.mx-c.raw;
+    const apKey='cat'+c.id;
+    h+='<tr class="'+(c.pct<70?'bg-red-50':c.pct<80?'bg-amber-50':'')+'">';
+    h+='<td class="border p-2 font-medium">'+cat.sn+'</td>';
+    h+='<td class="border p-2 text-center">'+c.raw+'</td>';
+    h+='<td class="border p-2 text-center">'+c.mx+'</td>';
+    h+='<td class="border p-2 text-center font-bold">'+c.pct.toFixed(1)+'</td>';
+    h+='<td class="border p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeClass(g)+'">'+gradeLabel(g)+'</span></td>';
+    h+='<td class="border p-2 text-center">'+(gap>0?gap:'—')+'</td>';
+    h+='<td class="border p-2"><textarea id="ap_action_'+c.id+'" onchange="saveAP()" class="w-full border border-gray-200 rounded p-1 text-xs" rows="2" placeholder="แผนดำเนินการ...">'+(saved[apKey+'_action']||'')+'</textarea>';
+    // Quick-win chips for low categories
+    const qws=QUICK_WINS.filter(q=>q.cat===c.id);
+    if(qws.length>0&&c.pct<80){h+='<div class="mt-1">';qws.forEach(q=>{h+='<span class="qw-chip" onclick="document.getElementById(\\'ap_action_'+c.id+'\\').value=\\''+q.action.replace(/'/g,"\\\\'")+'\\'">'+q.item+': '+q.title+' ('+q.time+')</span>';});h+='</div>';}
+    h+='</td>';
+    h+='<td class="border p-2"><input id="ap_owner_'+c.id+'" onchange="saveAP()" class="w-full border border-gray-200 rounded p-1 text-xs" value="'+(saved[apKey+'_owner']||'')+'"></td>';
+    h+='<td class="border p-2"><input id="ap_timeline_'+c.id+'" onchange="saveAP()" class="w-full border border-gray-200 rounded p-1 text-xs" value="'+(saved[apKey+'_timeline']||'')+'"></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+function saveAP(){
+  if(!CH)return;
+  const rnd=document.getElementById('aRound')?document.getElementById('aRound').value:(_rptD?_rptD.round:'');
+  if(!rnd)return;
+  const d={};
+  CATS.forEach(cat=>{
+    const k='cat'+cat.id;
+    const a=document.getElementById('ap_action_'+cat.id);
+    const o=document.getElementById('ap_owner_'+cat.id);
+    const t=document.getElementById('ap_timeline_'+cat.id);
+    if(a)d[k+'_action']=a.value;
+    if(o)d[k+'_owner']=o.value;
+    if(t)d[k+'_timeline']=t.value;
+  });
+  ls('r7_ap_'+CH.code+'_'+rnd,d);
 }
 
 // ==================== NAVIGATION ====================
 const PG=['pageDashboard','pageHospitalDetail','pageLogin','pageMyDashboard','pageAssessment','pageReport'];
 function showPage(id){
-  // Authorization: block restricted pages for regional viewers
   if(CU&&CU.role==='regional'&&['pageMyDashboard','pageAssessment','pageReport'].includes(id)){id='pageDashboard';}
   PG.forEach(p=>{const e=document.getElementById(p);if(e)e.classList.toggle('hidden',p!==id);});
   document.getElementById('btnLogin').classList.toggle('hidden',!!CU);
@@ -270,7 +390,6 @@ function showPage(id){
   document.getElementById('headerUser').classList.toggle('hidden',!CU);
   document.getElementById('btnMyDash').classList.toggle('hidden',!(CU&&CU.role==='hospital'));
   document.getElementById('btnImport').classList.toggle('hidden',!(CU&&CU.role==='admin'&&id==='pageDashboard'));
-  // Regional viewer: auto-filter by province
   if(CU&&CU.role==='regional'&&CU.province&&id==='pageDashboard'){
     const fp=document.getElementById('fProv');if(fp&&CU.province){fp.value=CU.province;refreshDash();}
   }
@@ -281,28 +400,26 @@ function showPage(id){
 async function gAPI(a,p={}){
   const u=new URL(API);u.searchParams.append('action',a);
   for(let k in p)u.searchParams.append(k,p[k]);
-  try{return await(await fetch(u)).json();}catch(e){return{success:false,error:e.message};}
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),15000);
+  try{const r=await(await fetch(u,{signal:ac.signal})).json();clearTimeout(t);return r;}
+  catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
 }
 async function pAPI(d){
-  try{return await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d)})).json();}
-  catch(e){return{success:false,error:e.message};}
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),15000);
+  try{const r=await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal})).json();clearTimeout(t);return r;}
+  catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
 }
 
-// ==================== LOADING ====================
+// ==================== UTILS ====================
 function showLoad(msg){document.getElementById('loadMsg').textContent=msg||'กำลังโหลด...';document.getElementById('loadOverlay').classList.remove('hidden');}
 function hideLoad(){document.getElementById('loadOverlay').classList.add('hidden');}
-
-// ==================== UTILS ====================
 function ik(c){return String(c).replace('.','_');}
-function gc(g){return g==='A'?'grade-a':g==='B'?'grade-b':g==='C'?'grade-c':g==='D'?'grade-d':'bg-gray-200';}
-function cg(c){return c>=85?'A':c>=75?'B':c>=65?'C':'D';}
 function ls(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function lg(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lr(k){try{localStorage.removeItem(k);}catch(e){}}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function nlbr(s){return esc(String(s||'')).replace(/\\\\n/g,'<br>').replace(/\\n/g,'<br>');}
 
-// Build latest score map per hospital, optionally filtered by round
 function getLS(scores,rnd){
   const m={};
   (scores||[]).forEach(s=>{
@@ -313,105 +430,95 @@ function getLS(scores,rnd){
   return m;
 }
 
-// ==================== DYNAMIC ROUND SELECTOR ====================
+// ==================== DYNAMIC ROUNDS ====================
 function buildRounds(){
-  // Collect rounds from historical data
   const roundSet=new Set();
   HS.forEach(r=>roundSet.add(r.r));
   AS.forEach(s=>{if(s.round)roundSet.add(s.round);});
-
-  // Also generate future rounds based on current Buddhist year
-  const now=new Date();
-  const by=now.getFullYear()+543;
-  for(let y=by-2;y<=by+1;y++){
-    roundSet.add('1/'+y);
-    roundSet.add('2/'+y);
-  }
-
-  // Sort: newest first
-  const rounds=[...roundSet].sort((a,b)=>{
-    const [ra,ya]=a.split('/').map(Number);
-    const [rb,yb]=b.split('/').map(Number);
-    return yb!==ya?yb-ya:rb-ra;
-  });
-  return rounds;
+  const now=new Date();const by=now.getFullYear()+543;
+  for(let y=by-2;y<=by+1;y++){roundSet.add('1/'+y);roundSet.add('2/'+y);}
+  return[...roundSet].sort((a,b)=>{const[ra,ya]=a.split('/').map(Number);const[rb,yb]=b.split('/').map(Number);return yb!==ya?yb-ya:rb-ra;});
 }
-
 function populateRoundSelectors(){
   const rounds=buildRounds();
-  // Dashboard filter
   const fRnd=document.getElementById('fRnd');
   fRnd.innerHTML='<option value="">ล่าสุด</option>'+rounds.map(r=>'<option value="'+r+'">'+r+'</option>').join('');
-  // Assessment round
   const aRound=document.getElementById('aRound');
-  const now=new Date();
-  const by=now.getFullYear()+543;
-  const currentRound=(now.getMonth()<6?'1/':'2/')+by;
-  aRound.innerHTML=rounds.map(r=>'<option value="'+r+'"'+(r===currentRound?' selected':'')+'>'+r+'</option>').join('');
+  const now=new Date();const by=now.getFullYear()+543;
+  const cr=(now.getMonth()<6?'1/':'2/')+by;
+  aRound.innerHTML=rounds.map(r=>'<option value="'+r+'"'+(r===cr?' selected':'')+'>'+r+'</option>').join('');
 }
 
-// ==================== CALC DIMS ====================
-function calcDims(d){
-  const c4=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
-  c4.sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
-  const t2=[c4[0].k,c4[1].k];
-  let rS=0;t2.forEach(k=>rS+=Number(d['i_'+k]||0));rS+=Number(d.i_5_1||0);
-  let coS=0;['6_1','6_2','6_3','6_4','6_5'].forEach(k=>coS+=Number(d['i_'+k]||0));
-  let diS=0;['1_3','1_4','1_5','1_6','3_12','3_13'].forEach(k=>diS+=Number(d['i_'+k]||0));
-  let clS=0;['3_7','3_8','3_9','3_10','3_11'].forEach(k=>clS+=Number(d['i_'+k]||0));
-  let prS=0;['1_1','1_2','2_1','2_2','3_1','3_2','3_3','3_4','3_5','3_6','3_14'].forEach(k=>prS+=Number(d['i_'+k]||0));
-  const rv=Math.round(rS/15*100),co=Math.round(coS/25*100),di=Math.round(diS/30*100),cl=Math.round(clS/25*100),pr=Math.round(prS/55*100);
-  const cp=Math.round(rv*.35+co*.15+di*.30+cl*.15+pr*.05);
-  return{revenue:rv,cost:co,discipline:di,collection:cl,process:pr,composite:cp,grade:cg(cp),top2:t2};
+// ==================== PROCESS HISTORICAL ====================
+function processHistorical(){
+  const processed=[];
+  HS.forEach(rec=>{
+    // Build i_ keyed object
+    const d={};EC.forEach(it=>{const k=ik(it.c);d['i_'+k]=rec['i_'+k]||0;});
+    const hp=AH.find(h=>String(h.code)===String(rec.h));
+    const level=hp?hp.level:'';
+    const cs=calcCatScores(d,level);
+    const dm=calcDims(d,level);
+    processed.push({
+      hospital_code:String(rec.h),round:rec.r,date:'',
+      total_raw:cs.totalRaw,total_max:cs.totalMax,
+      wpct:cs.wpct,grade:cs.grade,
+      dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
+      updated_at:rec.r,_src:'hist',_rec:rec
+    });
+  });
+  return processed;
 }
 
 // ==================== INIT ====================
 async function init(){
-  // Process historical data first (instant)
-  const histScores=processHistorical();
-
-  // Store item-level scores from historical data in localStorage
-  HS.forEach(rec=>{
-    const d={round:rec.r};
-    EC.forEach(it=>{const k=ik(it.c);d['i_'+k]=rec['i_'+k]||0;});
-    ls('r7_scores_'+rec.h+'_'+rec.r,d);
-  });
-
-  // Build hospitals from historical data
+  // Build hospitals from historical first
   const hMap={};
   HS.forEach(rec=>{
     if(!hMap[rec.h])hMap[rec.h]={code:String(rec.h),name:rec.hn||String(rec.h),province:rec.pv||'-',level:'-'};
   });
 
-  // Try API for hospitals (may have level info)
   try{
-    const [h,s]=await Promise.all([gAPI('getHospitals'),gAPI('getAllScores')]);
+    const[h,s]=await Promise.all([gAPI('getHospitals'),gAPI('getAllScores')]);
     if(h.success&&h.hospitals&&h.hospitals.length>0){
       AH=h.hospitals;
-      // Merge level info
       AH.forEach(ah=>{if(hMap[ah.code])hMap[ah.code].level=ah.level;});
     }
+    const histScores=processHistorical();
     if(s.success&&s.scores&&s.scores.length>0){
-      AS=s.scores.concat(histScores);
-    }else{
-      AS=histScores;
-    }
-  }catch(e){
-    AS=histScores;
-  }
+      // Recalculate API scores with new weighted system
+      AS=s.scores.map(sc=>{
+        const hp=AH.find(x=>String(x.code)===String(sc.hospital_code));
+        const level=hp?hp.level:'';
+        // If we have item-level data in cache, recalculate
+        const cached=lg('r7_scores_'+sc.hospital_code+'_'+sc.round);
+        if(cached){
+          const cs=calcCatScores(cached,level);
+          sc.wpct=cs.wpct;sc.grade=cs.grade;sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;
+        }else{
+          // Fallback: estimate from raw score
+          const raw=Number(sc.total_raw||0);
+          const mx=(!level||['M1','M2','A'].includes(level))?150:145;
+          sc.wpct=mx>0?Math.round(raw/mx*1000)/10:0;
+          sc.grade=gradeFromPct(sc.wpct);
+          sc.total_max=mx;
+        }
+        return sc;
+      }).concat(histScores);
+    }else{AS=histScores;}
+  }catch(e){AS=processHistorical();}
 
-  // If API didn't return hospitals, use historical
-  if(!AH.length){AH=Object.values(hMap);}else{
-    // Add any hospitals from historical that API doesn't have
-    Object.values(hMap).forEach(hh=>{
-      if(!AH.find(a=>String(a.code)===String(hh.code)))AH.push(hh);
-    });
-  }
+  // Store item-level scores from historical data
+  HS.forEach(rec=>{
+    const d={round:rec.r};EC.forEach(it=>{const k=ik(it.c);d['i_'+k]=rec['i_'+k]||0;});
+    ls('r7_scores_'+rec.h+'_'+rec.r,d);
+  });
 
-  populateRoundSelectors();
-  refreshDash();
+  if(!AH.length)AH=Object.values(hMap);
+  else Object.values(hMap).forEach(hh=>{if(!AH.find(a=>String(a.code)===String(hh.code)))AH.push(hh);});
+
+  populateRoundSelectors();refreshDash();
 }
-
 window.addEventListener('DOMContentLoaded',()=>{
   showPage('pageDashboard');init();
   document.getElementById('inPass').addEventListener('keypress',e=>{if(e.key==='Enter')doLogin();});
@@ -423,51 +530,94 @@ window.addEventListener('DOMContentLoaded',()=>{
 function refreshDash(){
   const pv=document.getElementById('fProv').value,lv=document.getElementById('fLev').value,rn=document.getElementById('fRnd').value;
   const lm=getLS(AS,rn);
+  // Previous round scores for delta calculation
+  const prevRn=getPrevRound(rn);
+  const prevLm=prevRn?getLS(AS,prevRn):{};
   let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);if(lv)fh=fh.filter(h=>h.level===lv);
-  let cA=0,cB=0,cC=0,cD=0,tot=0,cnt=0,dS={R:0,Co:0,D:0,Cl:0,P:0},dc=0;
+  let cA=0,cB=0,cC=0,cD=0,tot=0,cnt=0;
+  const catSums=[0,0,0,0,0,0];let catCnt=0;
+  const allWpcts=[];
   fh.forEach(h=>{
     const s=lm[String(h.code)];
     if(s){
-      const v=Number(s.composite)||0;
-      if(v>=85)cA++;else if(v>=75)cB++;else if(v>=65)cC++;else cD++;
-      tot+=v;cnt++;
-      dS.R+=Number(s.dim_revenue||0);dS.Co+=Number(s.dim_cost||0);dS.D+=Number(s.dim_discipline||0);dS.Cl+=Number(s.dim_collection||0);dS.P+=Number(s.dim_process||0);dc++;
+      const wp=Number(s.wpct||0);
+      const g=s.grade||gradeFromPct(wp);
+      if(g==='A')cA++;else if(g==='B')cB++;else if(g==='C')cC++;else cD++;
+      tot+=wp;cnt++;allWpcts.push(wp);
+      const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+      if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{catSums[i]+=c.pct;});catCnt++;}
     }
   });
   document.getElementById('sumTotal').textContent=fh.length;
   document.getElementById('sumA').textContent=cA;document.getElementById('sumB').textContent=cB;
   document.getElementById('sumC').textContent=cC;document.getElementById('sumD').textContent=cD;
-  document.getElementById('sumAvg').textContent=cnt>0?Math.round(tot/cnt):'-';
-  const avg=dc>0?[dS.R/dc,dS.Co/dc,dS.D/dc,dS.Cl/dc,dS.P/dc].map(v=>Math.round(v)):[0,0,0,0,0];
-  mkRadar('cRadarDash','chRD',avg);mkDonut([cA,cB,cC,cD]);
-  const rows=fh.map(h=>{
+  document.getElementById('sumAvg').textContent=cnt>0?(tot/cnt).toFixed(1):'-';
+  // Highlight active grade filter card
+  ['A','B','C','D'].forEach(g=>{const el=document.getElementById('sum'+g);if(el)el.parentElement.style.outline=(_gradeFilter===g)?'2px solid #4f46e5':'';});
+  const catAvg=catCnt>0?catSums.map(s=>Math.round(s/catCnt)):[0,0,0,0,0,0];
+  mkRadar6('cRadarDash','chRD',catAvg);mkDonut([cA,cB,cC,cD]);mkHistogram(allWpcts);
+  // Build rows with delta
+  const hideProv=!!pv;
+  let rows=fh.map(h=>{
     const s=lm[String(h.code)];
-    return{code:h.code,name:h.name,province:h.province,level:h.level,
-      raw:s?Number(s.total_raw)||0:0,
-      composite:s?Number(s.composite)||0:0,grade:s?s.grade||'-':'-'};
+    const wp=s?Number(s.wpct||0):0;
+    const g=s?(s.grade||'-'):'-';
+    const ps=prevLm[String(h.code)];
+    const prevWp=ps?Number(ps.wpct||0):null;
+    const delta=(prevWp!==null&&wp>0)?(wp-prevWp):null;
+    return{code:h.code,name:h.name,province:h.province,level:h.level,wpct:wp,grade:g,delta};
   });
+  // Apply grade filter
+  if(_gradeFilter)rows=rows.filter(r=>r.grade===_gradeFilter);
   rows.sort((a,b)=>{let x=a[sf],y=b[sf];if(typeof x==='string')return sd*x.localeCompare(y,'th');return sd*((x||0)-(y||0));});
   const tb=document.getElementById('tblBody');
-  if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="p-8 text-center text-gray-400">ไม่พบข้อมูล</td></tr>';return;}
-  tb.innerHTML=rows.map(r=>\`<tr class="border-b border-gray-50 hover:bg-indigo-50/50 cursor-pointer transition" onclick="openDetail('\${r.code}')">
-<td class="p-3 text-gray-600">\${r.code}</td><td class="p-3 font-medium text-gray-800">\${r.name}</td><td class="p-3 text-gray-600">\${r.province}</td>
+  const cols=hideProv?5:6;
+  const colsDelta=cols+1;
+  if(!rows.length){tb.innerHTML='<tr><td colspan="'+colsDelta+'" class="p-8 text-center text-gray-400">ไม่พบข้อมูล</td></tr>';return;}
+  // Update table header (province + delta)
+  const thead=tb.closest('table').querySelector('thead tr');
+  thead.innerHTML='<th class="p-3 text-left sortable" onclick="doSort(\\'code\\')">รหัส</th><th class="p-3 text-left sortable" onclick="doSort(\\'name\\')">ชื่อ รพ.</th>'+(hideProv?'':'<th class="p-3 text-left sortable" onclick="doSort(\\'province\\')">จังหวัด</th>')+'<th class="p-3 text-center sortable" onclick="doSort(\\'level\\')">ระดับ</th><th class="p-3 text-center sortable" onclick="doSort(\\'wpct\\')">คะแนน (%)</th><th class="p-3 text-center sortable" onclick="doSort(\\'delta\\')">Δ ก่อนหน้า</th><th class="p-3 text-center sortable" onclick="doSort(\\'grade\\')">ระดับผลประเมิน</th>'+(_gradeFilter?'<th class="p-3 text-center"><button onclick="clearGradeFilter()" class="text-xs text-indigo-600 hover:underline">ล้าง filter</button></th>':'');
+  tb.innerHTML=rows.map(r=>{
+    const dStr=r.delta!==null?(r.delta>0?'<span class="text-emerald-600 font-bold">&#8593;+'+r.delta.toFixed(1)+'</span>':r.delta<0?'<span class="text-red-500 font-bold">&#8595;'+r.delta.toFixed(1)+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">-</span>';
+    return \`<tr class="border-b border-gray-50 hover:bg-indigo-50/50 cursor-pointer transition" onclick="openDetail('\${r.code}')">
+<td class="p-3 text-gray-600">\${r.code}</td><td class="p-3 font-medium text-gray-800">\${r.name}</td>\${hideProv?'':'<td class="p-3 text-gray-600">'+r.province+'</td>'}
 <td class="p-3 text-center"><span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">\${r.level}</span></td>
-<td class="p-3 text-center">\${r.raw||'-'}</td>
-<td class="p-3 text-center font-bold">\${r.composite||'-'}</td>
-<td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gc(r.grade)}">\${r.grade}</span></td></tr>\`).join('');
+<td class="p-3 text-center font-bold">\${r.wpct>0?r.wpct.toFixed(1):'-'}</td>
+<td class="p-3 text-center">\${dStr}</td>
+<td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gradeClass(r.grade)}">\${gradeLabel(r.grade)}</span></td>\${_gradeFilter?'<td></td>':''}</tr>\`;
+  }).join('');
 }
 function doSort(f){if(sf===f)sd*=-1;else{sf=f;sd=-1;}refreshDash();}
+function filterByGrade(g){_gradeFilter=(_gradeFilter===g)?'':g;refreshDash();}
+function clearGradeFilter(){_gradeFilter='';refreshDash();}
 
 // ==================== CHARTS ====================
-function mkRadar(id,vn,vals){
+function mkRadar6(id,vn,vals){
   const ctx=document.getElementById(id).getContext('2d');if(window[vn])window[vn].destroy();
-  window[vn]=new Chart(ctx,{type:'radar',data:{labels:['Revenue','Cost','Discipline','Collection','Process'],datasets:[{label:'%',data:vals,backgroundColor:'rgba(79,70,229,0.15)',borderColor:'rgba(79,70,229,0.8)',borderWidth:2,pointBackgroundColor:'rgba(79,70,229,1)',pointRadius:4}]},
-  options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},pointLabels:{font:{size:11}}}},plugins:{legend:{display:false}}}});
+  window[vn]=new Chart(ctx,{type:'radar',data:{labels:CAT_LABELS,datasets:[{label:'%',data:vals,backgroundColor:'rgba(79,70,229,0.15)',borderColor:'rgba(79,70,229,0.8)',borderWidth:2,pointBackgroundColor:'rgba(79,70,229,1)',pointRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},pointLabels:{font:{size:10}}}},plugins:{legend:{display:false}}}});
 }
 function mkDonut(c){
   const ctx=document.getElementById('cDonutDash').getContext('2d');if(chDD)chDD.destroy();
-  chDD=new Chart(ctx,{type:'doughnut',data:{labels:['Grade A','Grade B','Grade C','Grade D'],datasets:[{data:c,backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'],borderWidth:2,borderColor:'#fff'}]},
+  chDD=new Chart(ctx,{type:'doughnut',data:{labels:['ดีเยี่ยม','ดี','พอใช้','ต้องปรับปรุง'],datasets:[{data:c,backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'],borderWidth:2,borderColor:'#fff'}]},
   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:12}}}}});
+}
+let chHist=null;
+function mkHistogram(wpcts){
+  const bins=['<70','70-75','75-80','80-85','85-90','90-95','95-100'];
+  const counts=[0,0,0,0,0,0,0];
+  const colors=['#ef4444','#f59e0b','#f59e0b','#3b82f6','#3b82f6','#10b981','#10b981'];
+  wpcts.forEach(w=>{if(w<70)counts[0]++;else if(w<75)counts[1]++;else if(w<80)counts[2]++;else if(w<85)counts[3]++;else if(w<90)counts[4]++;else if(w<95)counts[5]++;else counts[6]++;});
+  const ctx=document.getElementById('cHistDash').getContext('2d');if(chHist)chHist.destroy();
+  chHist=new Chart(ctx,{type:'bar',data:{labels:bins,datasets:[{label:'จำนวน รพ.',data:counts,backgroundColor:colors,borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1,precision:0}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+}
+function getPrevRound(rn){
+  const rounds=buildRounds();
+  if(!rn){/* latest: find 2nd in sorted list */if(rounds.length>=2)return rounds[1];return null;}
+  const idx=rounds.indexOf(rn);
+  if(idx>=0&&idx<rounds.length-1)return rounds[idx+1];
+  return null;
 }
 
 // ==================== DETAIL ====================
@@ -476,37 +626,43 @@ function openDetail(code){
   const h=AH.find(x=>String(x.code)===codeStr);if(!h)return;
   document.getElementById('dName').textContent=h.name;document.getElementById('dProv').textContent=h.province;
   document.getElementById('dLev').textContent='ระดับ '+h.level;
+  const rn=document.getElementById('fRnd').value;
   const hs=AS.filter(s=>String(s.hospital_code)===codeStr).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
   const la=hs[0];
   if(la){
-    document.getElementById('dComp').textContent=la.composite||'-';
-    const g=la.grade||'-';const e=document.getElementById('dGrade');e.textContent='Grade '+g;e.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gc(g);
-    mkRadar('cRadarDet','chDet',[Number(la.dim_revenue||0),Number(la.dim_cost||0),Number(la.dim_discipline||0),Number(la.dim_collection||0),Number(la.dim_process||0)]);
+    document.getElementById('dComp').textContent=la.wpct!=null?Number(la.wpct).toFixed(1):'-';
+    const g=la.grade||'-';const e=document.getElementById('dGrade');e.textContent=gradeText(g);e.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gradeClass(g);
   }else{
     document.getElementById('dComp').textContent='-';document.getElementById('dGrade').textContent='-';document.getElementById('dGrade').className='inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200';
-    mkRadar('cRadarDet','chDet',[0,0,0,0,0]);
   }
-  // Category bars from cached item scores
+  // Category bars + radar from cached item scores
   const cached=la?lg('r7_scores_'+codeStr+'_'+la.round):null;
-  let bars='';CATS.forEach(cat=>{
-    const its=EC.filter(x=>x.cat===cat.id);let sum=0,mx=cat.mx;
-    if(cached)its.forEach(it=>sum+=Number(cached['i_'+ik(it.c)]||0));
-    const pct=mx>0?Math.round(sum/mx*100):0;
-    bars+=\`<div><div class="flex justify-between text-xs mb-1"><span class="text-gray-700">\${cat.nm.split('(')[0]}</span><span class="font-bold" style="color:\${cat.col}">\${cached?sum+'/'+mx:'-'} (\${pct}%)</span></div><div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div class="h-2.5 rounded-full" style="width:\${pct}%;background:\${cat.col}"></div></div></div>\`;
-  });
-  document.getElementById('dCatBars').innerHTML=bars;
-
-  // History table
+  if(cached){
+    const cs=calcCatScores(cached,h.level);
+    mkRadar6('cRadarDet','chDet',cs.categories.map(c=>Math.round(c.pct)));
+    let bars='';cs.categories.forEach((c,i)=>{
+      const cat=CATS[i];
+      bars+=\`<div><div class="flex justify-between text-xs mb-1"><span class="text-gray-700">\${cat.sn} (\${cat.wt})</span><span class="font-bold" style="color:\${cat.col}">\${c.raw}/\${c.mx} (\${c.pct.toFixed(1)}%)</span></div><div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div class="h-2.5 rounded-full" style="width:\${c.pct}%;background:\${cat.col}"></div></div></div>\`;
+    });
+    document.getElementById('dCatBars').innerHTML=bars;
+    // Analysis
+    const an=generateAnalysis(cs);
+    document.getElementById('dAnalysis').innerHTML=renderAnalysisHTML(an);
+  }else{
+    mkRadar6('cRadarDet','chDet',[0,0,0,0,0,0]);
+    document.getElementById('dCatBars').innerHTML='<p class="text-gray-400 text-xs">ไม่มีข้อมูลรายข้อ</p>';
+    document.getElementById('dAnalysis').innerHTML='';
+  }
+  // History
   if(hs.length>0){
-    document.getElementById('dHist').innerHTML=\`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนนรวม</th><th class="p-2 text-center">Composite</th><th class="p-2 text-center">Grade</th></tr></thead><tbody>\${hs.map(s=>\`<tr class="border-b border-gray-50"><td class="p-2">\${s.round||'-'}</td><td class="p-2 text-center">\${s.total_raw||'-'}/150</td><td class="p-2 text-center font-bold">\${s.composite||'-'}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gc(s.grade)}">\${s.grade||'-'}</span></td></tr>\`).join('')}</tbody></table>\`;
+    document.getElementById('dHist').innerHTML=\`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">ระดับ</th></tr></thead><tbody>\${hs.map(s=>\`<tr class="border-b border-gray-50"><td class="p-2">\${s.round||'-'}</td><td class="p-2 text-center font-bold">\${s.wpct!=null?Number(s.wpct).toFixed(1):'-'}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gradeClass(s.grade)}">\${gradeLabel(s.grade)}</span></td></tr>\`).join('')}</tbody></table>\`;
   }else{document.getElementById('dHist').innerHTML='<p class="text-gray-400 text-xs">ยังไม่มีประวัติ</p>';}
-
-  // Best practice
-  const sl=AS.filter(s=>{const hp=AH.find(x=>String(x.code)===String(s.hospital_code));return hp&&hp.level===h.level&&String(s.hospital_code)!==codeStr;});
+  // Best practice — filter by round (ISS-002 fix)
+  const sl=AS.filter(s=>{const hp=AH.find(x=>String(x.code)===String(s.hospital_code));return hp&&hp.level===h.level&&String(s.hospital_code)!==codeStr&&(!rn||s.round===rn);});
   if(sl.length>0){
-    const b=sl.reduce((a,b)=>(Number(b.composite)||0)>(Number(a.composite)||0)?b:a,sl[0]);
+    const b=sl.reduce((a,b)=>(Number(b.wpct||0)>(Number(a.wpct||0))?b:a),sl[0]);
     const bh=AH.find(x=>String(x.code)===String(b.hospital_code));
-    document.getElementById('dBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> - Composite: <span class="font-bold text-indigo-600">\${b.composite}</span> Grade \${b.grade}\`;
+    document.getElementById('dBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> — \${Number(b.wpct||0).toFixed(1)}% \${gradeLabel(b.grade)}\`;
   }else{document.getElementById('dBest').textContent='ไม่มีข้อมูลเปรียบเทียบ';}
   showPage('pageHospitalDetail');
 }
@@ -522,7 +678,8 @@ async function doLogin(){
   document.getElementById('loginSpinner').classList.add('hidden');
   document.getElementById('btnDoLogin').disabled=false;
   if(r.success){
-    CU=r.user;document.getElementById('headerUser').textContent=CU.username+' ('+CU.role+')';
+    CU=r.user;CU._loginAt=Date.now();
+    document.getElementById('headerUser').textContent=CU.username+' ('+CU.role+')';
     if(CU.role==='admin'){showPage('pageDashboard');}
     else if(CU.role==='regional'){showPage('pageDashboard');}
     else{showLoad('กำลังโหลดข้อมูล รพ...');await loadMyDash(CU.hospital_code);hideLoad();showPage('pageMyDashboard');}
@@ -533,75 +690,139 @@ function doLogout(){CU=null;CH=null;document.getElementById('inUser').value='';d
 // ==================== MY DASHBOARD ====================
 async function loadMyDash(code){
   const codeStr=String(code);
-  // Get hospital info from API or fallback
   const hr=await gAPI('getHospital',{code:codeStr});
   if(hr.success)CH=hr.hospital;
   if(!CH)CH=AH.find(h=>String(h.code)===codeStr)||{code:codeStr,name:codeStr,province:'-',level:'-'};
-
   document.getElementById('mName').textContent=CH.name;document.getElementById('mProv').textContent=CH.province;document.getElementById('mLev').textContent='ระดับ '+CH.level;
 
-  // Get scores: API + historical
   let sc=[];
   const sr=await gAPI('getScores',{hospital_code:codeStr});
   if(sr.success&&sr.scores&&sr.scores.length>0)sc=sr.scores;
-
-  // Also include historical scores for this hospital
   const histForHosp=AS.filter(s=>String(s.hospital_code)===codeStr);
-  // Merge: API scores take precedence over historical for same round
   const roundMap={};
-  histForHosp.forEach(s=>roundMap[s.round]=s);
-  sc.forEach(s=>roundMap[s.round]=s);
+  histForHosp.forEach(s=>roundMap[s.round]=s);sc.forEach(s=>roundMap[s.round]=s);
   const sorted=Object.values(roundMap).sort((a,b)=>(b.updated_at||b.round||'').localeCompare(a.updated_at||a.round||''));
   const la=sorted[0];
 
   if(la){
-    document.getElementById('mComp').textContent=la.composite||'-';
-    const g=la.grade||'-';const e=document.getElementById('mGrade');e.textContent='Grade '+g;e.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gc(g);
-    document.getElementById('mDR').textContent=(la.dim_revenue||0)+'%';document.getElementById('mDCo').textContent=(la.dim_cost||0)+'%';document.getElementById('mDD').textContent=(la.dim_discipline||0)+'%';document.getElementById('mDCl').textContent=(la.dim_collection||0)+'%';document.getElementById('mDP').textContent=(la.dim_process||0)+'%';
-    mkRadar('cRadarMy','chMy',[Number(la.dim_revenue||0),Number(la.dim_cost||0),Number(la.dim_discipline||0),Number(la.dim_collection||0),Number(la.dim_process||0)]);
+    // Recalculate with cached data
+    const cached=lg('r7_scores_'+codeStr+'_'+la.round);
+    let wp,g;
+    if(cached){
+      const cs=calcCatScores(cached,CH.level);
+      wp=cs.wpct;g=cs.grade;
+      mkRadar6('cRadarMy','chMy',cs.categories.map(c=>Math.round(c.pct)));
+      const an=generateAnalysis(cs);
+      document.getElementById('mAnalysis').innerHTML=renderAnalysisHTML(an);
+    }else{
+      wp=Number(la.wpct||0);g=la.grade||gradeFromPct(wp);
+      mkRadar6('cRadarMy','chMy',[0,0,0,0,0,0]);
+      document.getElementById('mAnalysis').innerHTML='';
+    }
+    document.getElementById('mComp').textContent=wp.toFixed(1);
+    const ge=document.getElementById('mGrade');ge.textContent=gradeText(g);ge.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gradeClass(g);
   }else{
     document.getElementById('mComp').textContent='-';document.getElementById('mGrade').textContent='ยังไม่มีข้อมูล';document.getElementById('mGrade').className='inline-block px-4 py-1.5 rounded-full text-sm bg-gray-200';
-    ['mDR','mDCo','mDD','mDCl','mDP'].forEach(x=>document.getElementById(x).textContent='-');mkRadar('cRadarMy','chMy',[0,0,0,0,0]);
+    mkRadar6('cRadarMy','chMy',[0,0,0,0,0,0]);
+    document.getElementById('mAnalysis').innerHTML='';
   }
 
+  // Primary button: start or resume
+  const hasDraft=checkDraft(codeStr);
+  const btnEl=document.getElementById('mPrimaryBtn');
+  if(hasDraft){
+    btnEl.innerHTML='<button onclick="startOrResume()" data-testid="btn-start-assess" class="bg-amber-500 hover:bg-amber-600 text-white py-4 px-10 rounded-xl font-bold text-lg transition shadow-md">ทำต่อการประเมิน</button><div class="text-xs text-gray-500 mt-1">มีร่างที่ยังไม่ได้บันทึก</div>';
+  }else{
+    btnEl.innerHTML='<button onclick="startOrResume()" data-testid="btn-start-assess" class="bg-indigo-600 hover:bg-indigo-700 text-white py-4 px-10 rounded-xl font-bold text-lg transition shadow-md hover:shadow-lg">เริ่มการประเมิน</button>';
+  }
+
+  // History table with submit status
   if(sorted.length>0){
-    document.getElementById('mHist').innerHTML=\`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนนรวม</th><th class="p-2 text-center">Composite</th><th class="p-2 text-center">Grade</th><th class="p-2 text-center">จัดการ</th></tr></thead><tbody>\${sorted.map(s=>\`<tr class="border-b border-gray-50"><td class="p-2">\${s.round||'-'}</td><td class="p-2 text-center">\${s.total_raw||'-'}/150</td><td class="p-2 text-center font-bold">\${s.composite||'-'}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gc(s.grade)}">\${s.grade||'-'}</span></td><td class="p-2 text-center"><button onclick="editAssess('\${s.round}')" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt('\${s.round}')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button></td></tr>\`).join('')}</tbody></table>\`;
+    document.getElementById('mHist').innerHTML=\`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">ระดับ</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-center">จัดการ</th></tr></thead><tbody>\${sorted.map(s=>{
+      const st=lg('r7_status_'+codeStr+'_'+s.round);
+      const isSubmitted=st&&st.status==='submitted';
+      const wp=s.wpct!=null?Number(s.wpct).toFixed(1):'-';
+      return \`<tr class="border-b border-gray-50"><td class="p-2">\${s.round||'-'}</td><td class="p-2 text-center font-bold">\${wp}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold \${gradeClass(s.grade)}">\${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">\${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center">\${isSubmitted?'<button onclick="viewRpt(\\''+s.round+'\\')  " class="text-emerald-600 hover:underline text-xs">รายงาน</button>':'<button onclick="editAssess(\\''+s.round+'\\' )" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt(\\''+s.round+'\\')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button>'}</td></tr>\`;
+    }).join('')}</tbody></table>\`;
   }else{document.getElementById('mHist').innerHTML='<p class="text-gray-400 text-xs">ยังไม่มีประวัติ</p>';}
 
-  // Best practice
-  const sl=AS.filter(s=>{const hp=AH.find(x=>String(x.code)===String(s.hospital_code));return hp&&hp.level===CH.level&&String(s.hospital_code)!==codeStr;});
+  // Best practice — filter by round
+  const latestRound=la?la.round:null;
+  const sl=AS.filter(s=>{const hp=AH.find(x=>String(x.code)===String(s.hospital_code));return hp&&hp.level===CH.level&&String(s.hospital_code)!==codeStr&&(!latestRound||s.round===latestRound);});
   if(sl.length>0){
-    const b=sl.reduce((a,b)=>(Number(b.composite)||0)>(Number(a.composite)||0)?b:a,sl[0]);const bh=AH.find(x=>String(x.code)===String(b.hospital_code));
-    document.getElementById('mBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> - Composite: <span class="font-bold text-indigo-600">\${b.composite}</span> Grade \${b.grade}\`;
+    const b=sl.reduce((a,b)=>(Number(b.wpct||0)>(Number(a.wpct||0))?b:a),sl[0]);const bh=AH.find(x=>String(x.code)===String(b.hospital_code));
+    document.getElementById('mBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> — \${Number(b.wpct||0).toFixed(1)}% \${gradeLabel(b.grade)}\`;
   }else{document.getElementById('mBest').textContent='ไม่มีข้อมูลเปรียบเทียบ';}
 }
 
-// ==================== ASSESSMENT ====================
-function startAssess(){
-  if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์ทำแบบประเมิน');return;}
-  _rd=null;
+function checkDraft(code){
   const now=new Date();const by=now.getFullYear()+543;
-  const currentRound=(now.getMonth()<6?'1/':'2/')+by;
-  document.getElementById('aRound').value=currentRound;
-  document.getElementById('aDate').value=now.toISOString().split('T')[0];
-  renderItems();showPage('pageAssessment');
+  const cr=(now.getMonth()<6?'1/':'2/')+by;
+  return!!lg('r7_draft_'+code+'_'+cr);
 }
+
+// ==================== ASSESSMENT ====================
+function startOrResume(){
+  if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์ทำแบบประเมิน');return;}
+  const now=new Date();const by=now.getFullYear()+543;
+  const cr=(now.getMonth()<6?'1/':'2/')+by;
+  _rd=null;
+  document.getElementById('aRound').value=cr;
+  document.getElementById('aDate').value=now.toISOString().split('T')[0];
+  cat4Sel.clear();
+  // Try to restore draft (ISS-003: prompt user)
+  let useDraft=false;
+  if(CH){
+    const draft=lg('r7_draft_'+CH.code+'_'+cr);
+    if(draft&&confirm('พบแบบร่างที่ยังไม่ได้บันทึก ต้องการกู้คืนหรือไม่?')){restoreCat4(draft);useDraft=true;}
+  }
+  renderItems();
+  if(CH&&useDraft){
+    const draft=lg('r7_draft_'+CH.code+'_'+cr);
+    if(draft){
+      EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&draft['i_'+k]!==undefined&&draft['i_'+k]!=='')el.value=draft['i_'+k];});
+      if(draft.date)document.getElementById('aDate').value=draft.date;
+      updAllBtnStates();updCat4UI();
+    }
+  }
+  updLive();showPage('pageAssessment');
+}
+function startAssess(){startOrResume();}
 function editAssess(round){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์แก้ไขแบบประเมิน');return;}
+  // Check submit state
+  if(CH){
+    const st=lg('r7_status_'+CH.code+'_'+round);
+    if(st&&st.status==='submitted'){alert('การประเมินนี้ส่งแล้ว ต้องขอ Admin ปลดล็อคก่อนแก้ไข');return;}
+  }
   _rd=round;document.getElementById('aRound').value=round;document.getElementById('aDate').value=new Date().toISOString().split('T')[0];
+  cat4Sel.clear();
+  if(CH){
+    const draft=lg('r7_draft_'+CH.code+'_'+round);
+    const saved=lg('r7_scores_'+CH.code+'_'+round);
+    const src=draft||saved;
+    if(src){restoreCat4(src);}
+  }
   renderItems();
   if(CH){
-    const c=lg('r7_scores_'+CH.code+'_'+round);
-    if(c){EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&c['i_'+k]!==undefined&&c['i_'+k]!=='')el.value=c['i_'+k];});if(c.date)document.getElementById('aDate').value=c.date;}
+    const draft=lg('r7_draft_'+CH.code+'_'+round);
+    const saved=lg('r7_scores_'+CH.code+'_'+round);
+    const src=draft||saved;
+    if(src){EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&src['i_'+k]!==undefined&&src['i_'+k]!=='')el.value=src['i_'+k];});if(src.date)document.getElementById('aDate').value=src.date;}
+    updAllBtnStates();updCat4UI();
   }
   updLive();showPage('pageAssessment');
 }
 function loadDraft(){
   const rnd=document.getElementById('aRound').value;
+  cat4Sel.clear();
   if(CH){
-    const c=lg('r7_scores_'+CH.code+'_'+rnd);
-    if(c){EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&c['i_'+k]!==undefined)el.value=c['i_'+k];});}
-    else{EC.forEach(it=>{const el=document.getElementById('sc_'+ik(it.c));if(el)el.value='';});}
+    const draft=lg('r7_draft_'+CH.code+'_'+rnd);
+    const saved=lg('r7_scores_'+CH.code+'_'+rnd);
+    const src=draft||saved;
+    if(src){restoreCat4(src);renderItems();EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&src['i_'+k]!==undefined)el.value=src['i_'+k];});}
+    else{renderItems();EC.forEach(it=>{const el=document.getElementById('sc_'+ik(it.c));if(el)el.value='';});}
+    updAllBtnStates();updCat4UI();
   }
   updLive();
 }
@@ -610,60 +831,150 @@ function renderItems(){
   const ct=document.getElementById('aItems');let h='';
   CATS.forEach(cat=>{
     const its=EC.filter(x=>x.cat===cat.id);
-    h+=\`<div class="mb-4 border border-gray-200 rounded-xl overflow-hidden"><div class="\${cat.css} p-3 font-bold text-gray-800 text-sm">\${cat.nm}\${cat.id===4?'<div class="text-xs font-normal text-gray-600 mt-1">**ให้หน่วยบริการให้คะแนนทุกข้อ ระบบจะเลือก 2 ข้อที่คะแนนสูงสุดอัตโนมัติ</div>':''}</div><div class="p-4 space-y-4">\`;
+    h+=\`<div class="mb-4 border border-gray-200 rounded-xl overflow-hidden"><div class="\${cat.css} p-3 font-bold text-gray-800 text-sm flex justify-between items-center"><span>\${cat.nm}</span><span id="catProg_\${cat.id}" class="text-xs font-normal text-gray-600">0/\${cat.id===4?5:its.length}</span>\${cat.id===4?'<span id="c4selCount" class="ml-2 text-xs font-bold text-amber-600">(เลือก '+cat4Sel.size+'/2)</span>':''}</div><div class="p-4 space-y-4">\`;
     its.forEach(it=>{
       const k=ik(it.c),lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);
-      if(!show)return;
-      // Concept/standard section
-      const csHtml=it.cs?\`<div class="bg-blue-50 border border-blue-100 rounded-lg p-2 mt-1 mb-2"><div class="text-xs font-bold text-blue-700 mb-1">แนวคิด/มาตรฐาน</div><div class="text-xs text-blue-800 nl">\${nlbr(it.cs)}</div></div>\`:'';
-      const evHtml=it.ev?\`<div class="text-xs text-gray-500 mt-1"><span class="font-medium">หลักฐาน:</span> \${nlbr(it.ev)}</div>\`:'';
-      const rgHtml=it.rg?\`<div class="text-xs text-gray-500 mt-1"><span class="font-medium">กฎระเบียบ:</span> \${nlbr(it.rg)}</div>\`:'';
-
-      h+=\`<div class="border-b border-gray-100 pb-3 last:border-b-0" id="row_\${k}">
-<div class="flex items-center gap-2 mb-1 flex-wrap"><span class="text-indigo-600 font-bold text-sm">\${it.c}</span><span class="text-gray-700 text-sm">\${esc(it.n)}</span>\${it.cat===4?'<span id="tb_'+k+'" class="top-badge hidden">TOP</span>':''}</div>
-\${csHtml}
-<div class="flex items-center gap-2 mb-1"><select id="sc_\${k}" onchange="onSc('\${k}')" class="border border-gray-200 p-1.5 rounded-lg text-sm w-32 bg-white"><option value="">-- เลือก --</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><span class="text-gray-400 text-xs">/ 5</span></div>
-<details class="text-xs"><summary class="cursor-pointer text-indigo-500 hover:text-indigo-700 select-none">ดูเกณฑ์ทุกระดับ</summary><div class="mt-1 space-y-0.5 pl-1">\${[0,1,2,3,4,5].map(lv=>\`<div class="score-level" id="lv_\${k}_\${lv}" onclick="pickLv('\${k}',\${lv})"><span class="font-bold text-indigo-700">\${lv}:</span> <span class="text-gray-600 nl">\${nlbr(it['s'+lv]||'ไม่มีข้อมูล')}</span></div>\`).join('')}</div></details>
-\${evHtml}\${rgHtml}
+      if(!show){
+        // Show N/A for constrained items (like 6.4)
+        h+=\`<div class="border-b border-gray-100 pb-2 last:border-b-0 opacity-50" id="row_\${k}"><div class="flex items-center gap-2"><span class="text-indigo-600 font-bold text-sm">\${it.c}</span><span class="text-gray-500 text-sm">\${esc(it.n)}</span><span class="ml-auto px-2 py-0.5 bg-gray-200 text-gray-500 rounded text-xs font-bold">N/A</span></div><select id="sc_\${k}" class="hidden"><option value="NA">N/A</option></select></div>\`;
+        return;
+      }
+      h+=\`<div class="border-b border-gray-100 pb-3 last:border-b-0 \${it.cat===4&&!cat4Sel.has(k)?'c4-unsel':''}" id="row_\${k}">
+<div class="flex items-center gap-2 mb-2 flex-wrap"><span class="text-indigo-600 font-bold text-sm">\${it.c}</span><span class="text-gray-700 text-sm">\${esc(it.n)}</span>\${it.cat===4?'<label class="ml-auto flex items-center gap-1.5 cursor-pointer select-none"><input type="checkbox" id="c4ck_'+k+'" '+(cat4Sel.has(k)?'checked':'')+' onchange="toggleCat4(\\''+k+'\\')" class="c4-ck"><span class="text-xs text-amber-700 font-bold">เลือกข้อนี้</span></label>':''}</div>
+<div class="flex gap-2 flex-wrap items-center mb-2">
+<button id="by_\${k}" class="big-btn big-btn-yes" onclick="setScore('\${k}',5)">&#10004; ทำได้ (5)</button>
+<button id="bn_\${k}" class="big-btn big-btn-no" onclick="setScore('\${k}',0)">&#10008; ยังไม่ได้ (0)</button>
+<button class="text-indigo-500 text-xs hover:underline" onclick="document.getElementById('fine_\${k}').classList.toggle('hidden')">ปรับ 0-5 &#9662;</button>
+<span id="sv_\${k}" class="text-sm font-bold text-gray-400"></span>
+</div>
+<div id="fine_\${k}" class="hidden flex gap-1 mb-2">\${[0,1,2,3,4,5].map(lv=>\`<button id="fb_\${k}_\${lv}" class="fine-btn" onclick="setScore('\${k}',\${lv})">\${lv}</button>\`).join('')}</div>
+<select id="sc_\${k}" class="hidden"><option value="">-</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+<details class="text-xs"><summary class="cursor-pointer text-indigo-500 hover:text-indigo-700 select-none">ดูคำแนะนำ</summary><div class="mt-1 space-y-0.5 pl-1">\${[0,1,2,3,4,5].map(lv=>\`<div class="score-level" id="lv_\${k}_\${lv}" onclick="setScore('\${k}',\${lv})"><span class="font-bold text-indigo-700">\${lv}:</span> <span class="text-gray-600 nl">\${nlbr(it['s'+lv]||'ไม่มีข้อมูล')}</span></div>\`).join('')}</div></details>
 </div>\`;
     });
     h+='</div></div>';
   });
-  ct.innerHTML=h;document.getElementById('saveMsg').textContent='';updLive();
+  ct.innerHTML=h;document.getElementById('saveMsg').textContent='';document.getElementById('autoSaveMsg').textContent='';updLive();
 }
 
-function pickLv(k,lv){const el=document.getElementById('sc_'+k);if(el){el.value=String(lv);onSc(k);}}
-function onSc(k){
-  for(let i=0;i<=5;i++){const e=document.getElementById('lv_'+k+'_'+i);if(e)e.classList.remove('selected');}
-  const el=document.getElementById('sc_'+k);
-  if(el&&el.value!==''){const e=document.getElementById('lv_'+k+'_'+el.value);if(e)e.classList.add('selected');}
-  updLive();autoSave();
+function setScore(k,v){
+  // Block scoring for unselected Cat4 items
+  if(['4_1','4_2','4_3','4_4','4_5'].includes(k)&&!cat4Sel.has(k)){return;}
+  const el=document.getElementById('sc_'+k);if(el)el.value=String(v);
+  updBtnState(k,v);updLive();autoSave();
+}
+function updBtnState(k,v){
+  const by=document.getElementById('by_'+k),bn=document.getElementById('bn_'+k),sv=document.getElementById('sv_'+k);
+  if(by){by.classList.toggle('active',v===5);bn.classList.toggle('active',v===0);}
+  if(sv)sv.textContent=(v!==''&&v!==null&&v!==undefined)?v+'/5':'';
+  if(v!==''&&v!==null){sv.className='text-sm font-bold '+(v>=4?'text-emerald-600':v>=3?'text-blue-600':v>=1?'text-amber-600':'text-red-500');}
+  // Fine buttons
+  for(let i=0;i<=5;i++){const fb=document.getElementById('fb_'+k+'_'+i);if(fb)fb.classList.toggle('active',i===v);}
+  // Score level highlight
+  for(let i=0;i<=5;i++){const e=document.getElementById('lv_'+k+'_'+i);if(e)e.classList.toggle('selected',i===v);}
+}
+function updAllBtnStates(){
+  EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&el.value!==''&&el.value!=='NA')updBtnState(k,Number(el.value));});
+}
+
+// ==================== CAT4 CHOOSE-2 ====================
+function toggleCat4(k){
+  if(cat4Sel.has(k)){
+    cat4Sel.delete(k);
+    const el=document.getElementById('sc_'+k);if(el)el.value='0';
+    updBtnState(k,0);
+  }else{
+    if(cat4Sel.size>=2){alert('สามารถเลือกได้สูงสุด 2 ข้อเท่านั้น กรุณายกเลิกข้ออื่นก่อน');const ck=document.getElementById('c4ck_'+k);if(ck)ck.checked=false;return;}
+    cat4Sel.add(k);
+  }
+  updCat4UI();updLive();autoSave();
+}
+function updCat4UI(){
+  ['4_1','4_2','4_3','4_4','4_5'].forEach(k=>{
+    const row=document.getElementById('row_'+k);if(!row)return;
+    const ck=document.getElementById('c4ck_'+k);
+    const sel=cat4Sel.has(k);
+    if(ck)ck.checked=sel;
+    row.classList.toggle('c4-unsel',!sel);
+  });
+  const cnt=document.getElementById('c4selCount');if(cnt)cnt.textContent='(เลือก '+cat4Sel.size+'/2)';
+}
+function restoreCat4(data){
+  cat4Sel.clear();
+  if(data&&data.cat4_selected){
+    data.cat4_selected.forEach(k=>{if(cat4Sel.size<2)cat4Sel.add(k);});
+  }else{
+    // Infer from non-zero scores
+    const c4=['4_1','4_2','4_3','4_4','4_5'];
+    const scored=c4.filter(k=>Number(data['i_'+k]||0)>0).sort((a,b)=>Number(data['i_'+b]||0)-Number(data['i_'+a]||0));
+    scored.slice(0,2).forEach(k=>cat4Sel.add(k));
+  }
 }
 
 function updLive(){
-  const d=collectForm(),dm=calcDims(d);
-  document.getElementById('lComp').textContent=dm.composite;
-  const ge=document.getElementById('lGrd');ge.textContent=dm.grade;ge.className='ml-1 px-2 py-0.5 rounded text-xs font-bold '+gc(dm.grade);
-  let filled=0,total=0;EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!=='')filled++;});
-  const pct=total>0?Math.round(filled/total*100):0;document.getElementById('aBar').style.width=pct+'%';document.getElementById('aProg').textContent=filled+'/'+total;
+  const d=collectForm();
+  const level=CH?CH.level:'';
+  const cs=calcCatScores(d,level);
+  document.getElementById('lComp').textContent=cs.wpct.toFixed(1);
+  const ge=document.getElementById('lGrd');ge.textContent=gradeLabel(cs.grade);ge.className='ml-1 px-2 py-0.5 rounded text-xs font-bold '+gradeClass(cs.grade);
+  // Progress
+  let filled=0,total=0;
+  EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')filled++;});
+  const pct=total>0?Math.round(filled/total*100):0;
+  document.getElementById('aBar').style.width=pct+'%';document.getElementById('aProg').textContent=filled+'/'+total;
+  // Cat4 TOP badges
   ['4_1','4_2','4_3','4_4','4_5'].forEach(k=>{const b=document.getElementById('tb_'+k);if(b)b.classList.add('hidden');});
-  if(dm.top2)dm.top2.forEach(k=>{const b=document.getElementById('tb_'+k);if(b)b.classList.remove('hidden');});
+  if(cs.top2)cs.top2.forEach(k=>{const b=document.getElementById('tb_'+k);if(b)b.classList.remove('hidden');});
+  // Category progress
+  let cpH='';
+  CATS.forEach(cat=>{
+    const its=EC.filter(x=>x.cat===cat.id);
+    let cf=0,ct2=0;
+    its.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;ct2++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')cf++;});
+    const done=cf===ct2&&ct2>0;
+    cpH+='<span class="px-2 py-1 rounded-md text-xs font-medium '+(done?'bg-emerald-100 text-emerald-700':'bg-gray-100 text-gray-600')+'">'+cat.sn+' '+cf+'/'+ct2+'</span>';
+    const cp=document.getElementById('catProg_'+cat.id);if(cp)cp.textContent=cf+'/'+ct2;
+  });
+  document.getElementById('aCatProg').innerHTML=cpH;
 }
 
 function collectForm(){
   const d={round:document.getElementById('aRound').value,date:document.getElementById('aDate').value};
-  EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);d['i_'+k]=el?el.value||'0':'0';});return d;
+  EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);
+    if(el&&el.value==='NA')d['i_'+k]='NA';
+    else d['i_'+k]=el?el.value||'0':'0';
+  });
+  return d;
 }
 
-function autoSave(){if(!CH)return;const d=collectForm();d.date=document.getElementById('aDate').value;ls('r7_draft_'+CH.code,d);}
+function autoSave(){
+  if(!CH)return;
+  const d=collectForm();d.date=document.getElementById('aDate').value;
+  d.cat4_selected=[...cat4Sel];
+  ls('r7_draft_'+CH.code+'_'+d.round,d);
+  const now=new Date();
+  document.getElementById('autoSaveMsg').textContent='บันทึกร่างล่าสุดเมื่อ '+now.toLocaleTimeString('th-TH');
+}
 
 async function saveAssess(){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์บันทึกแบบประเมิน');return;}
-  const d=collectForm(),dm=calcDims(d);
+  const d=collectForm(),level=CH?CH.level:'';
+  const cs=calcCatScores(d,level);
+  const dm=calcDims(d,level);
   if(!d.date){alert('กรุณาเลือกวันที่ประเมิน');return;}
-  const payload={action:'saveScore',hospital_code:CH.code,round:d.round,date:d.date,composite:dm.composite,grade:dm.grade,dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,cat4_selected:(dm.top2||[]).map(k=>k.replace('_','.')).join(',')};
-  let totalRaw=0;const t2s=new Set(dm.top2||[]);
-  EC.forEach(it=>{const k=ik(it.c);payload['item_'+k]=d['i_'+k];if(it.cat===4){if(t2s.has(k))totalRaw+=Number(d['i_'+k]||0);}else{totalRaw+=Number(d['i_'+k]||0);}});
+  if(cat4Sel.size!==2){alert('กรุณาเลือกข้อหมวด 4 ให้ครบ 2 ข้อ (เลือกแล้ว '+cat4Sel.size+'/2)');return;}
+  // Completeness check
+  let filled=0,total=0;
+  EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')filled++;});
+  if(filled<total&&!confirm('คุณกรอกเพียง '+filled+'/'+total+' ข้อ ต้องการบันทึกหรือไม่?'))return;
+
+  const payload={action:'saveScore',hospital_code:CH.code,round:d.round,date:d.date,
+    composite:cs.wpct,grade:cs.grade,wpct:cs.wpct,
+    dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
+    cat4_selected:(cs.top2||[]).map(k=>k.replace('_','.')).join(','),
+    submitted_by:CU?CU.username:'unknown',submitted_at:new Date().toISOString()};
+  let totalRaw=0;const t2s=new Set(cs.top2||[]);
+  EC.forEach(it=>{const k=ik(it.c);const v=d['i_'+k];if(v==='NA'){payload['item_'+k]='NA';return;}payload['item_'+k]=v;if(it.cat===4){if(t2s.has(k))totalRaw+=Number(v||0);}else{totalRaw+=Number(v||0);}});
   payload.total_raw=totalRaw;
 
   document.getElementById('saveMsg').textContent='กำลังบันทึก...';
@@ -672,40 +983,60 @@ async function saveAssess(){
   const result=await pAPI(payload);
   document.getElementById('saveSpinner').classList.add('hidden');
   document.getElementById('btnSave').disabled=false;
-
   if(!result.success){
     document.getElementById('saveMsg').textContent='บันทึกไม่สำเร็จ: '+(result.error||'กรุณาลองใหม่');
     document.getElementById('saveMsg').className='mt-2 text-red-500 text-sm';
-    // Still save locally
   }else{
     document.getElementById('saveMsg').textContent='บันทึกสำเร็จ';
     document.getElementById('saveMsg').className='mt-2 text-emerald-500 text-sm';
   }
-
-  ls('r7_scores_'+CH.code+'_'+d.round,d);lr('r7_draft_'+CH.code);
+  // Save locally
+  ls('r7_scores_'+CH.code+'_'+d.round,d);
+  lr('r7_draft_'+CH.code+'_'+d.round);
+  // Mark as submitted
+  ls('r7_status_'+CH.code+'_'+d.round,{status:'submitted',at:new Date().toISOString(),by:CU?CU.username:'unknown'});
+  // Refresh scores
   try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0)AS=sr.scores.concat(processHistorical());else AS=processHistorical();}catch(e){}
-  showReport(d,dm);
+  showReport(d,cs,dm);
 }
 
 // ==================== REPORT ====================
-function showReport(d,dm){
-  _rptD=d;_rptDm=dm;
-  document.getElementById('rSub').textContent=(CH?CH.name:'')+' - รอบ '+d.round;
-  document.getElementById('rComp').textContent=dm.composite;
-  const ge=document.getElementById('rGrade');ge.textContent='Grade '+dm.grade;ge.className='inline-block px-4 py-1 rounded-full text-sm font-bold '+gc(dm.grade);
-  mkRadar('cRadarRpt','chRpt',[dm.revenue,dm.cost,dm.discipline,dm.collection,dm.process]);
+function showReport(d,cs,dm){
+  _rptD=d;_rptDm=dm;_rptCat=cs;
+  document.getElementById('rSub').textContent=(CH?CH.name:'')+' — รอบ '+d.round;
+  document.getElementById('rComp').textContent=cs.wpct.toFixed(1);
+  document.getElementById('rRaw').textContent='(คะแนนดิบ '+cs.totalRaw+'/'+cs.totalMax+')';
+  const ge=document.getElementById('rGrade');ge.textContent=gradeText(cs.grade);ge.className='inline-block px-4 py-1 rounded-full text-sm font-bold '+gradeClass(cs.grade);
+  mkRadar6('cRadarRpt','chRpt',cs.categories.map(c=>Math.round(c.pct)));
 
+  // Category table
+  let ct='<h4 class="font-bold text-gray-700 mb-2 text-sm">คะแนนรายหมวด</h4><table class="w-full text-xs border mb-2"><thead class="bg-gray-50"><tr><th class="border p-2 text-left">หมวด</th><th class="border p-2 text-center">ได้</th><th class="border p-2 text-center">เต็ม</th><th class="border p-2 text-center">ร้อยละ</th><th class="border p-2 text-center">ระดับ</th><th class="border p-2 text-center">Gap</th></tr></thead><tbody>';
+  cs.categories.forEach((c,i)=>{
+    const cat=CATS[i];const g=gradeFromPct(c.pct);
+    ct+='<tr class="'+(c.pct<70?'bg-red-50':c.pct<80?'bg-amber-50':'')+'"><td class="border p-2">'+cat.sn+' ('+cat.wt+')</td><td class="border p-2 text-center">'+c.raw+'</td><td class="border p-2 text-center">'+c.mx+'</td><td class="border p-2 text-center font-bold">'+c.pct.toFixed(1)+'</td><td class="border p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeClass(g)+'">'+gradeLabel(g)+'</span></td><td class="border p-2 text-center">'+(c.mx-c.raw>0?c.mx-c.raw:'—')+'</td></tr>';
+  });
+  ct+='</tbody></table>';
+  document.getElementById('rCatTable').innerHTML=ct;
+
+  // Analysis
+  const an=generateAnalysis(cs);
+  document.getElementById('rAnalysis').innerHTML=renderAnalysisHTML(an);
+
+  // Strengths
   let sh='';EC.forEach(it=>{
     const k=ik(it.c),sc=Number(d['i_'+k]||0);
-    if(sc>=4)sh+=\`<div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-sm"><span class="font-bold text-emerald-700">\${it.c}</span> \${esc(it.n)} <span class="ml-1 font-bold text-emerald-600">(\${sc}/5)</span><div class="text-gray-600 text-xs mt-1 nl">\${nlbr(it['s'+sc])}</div></div>\`;
+    if(d['i_'+k]==='NA')return;
+    if(sc>=4)sh+='<div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-sm"><span class="font-bold text-emerald-700">'+it.c+'</span> '+esc(it.n)+' <span class="ml-1 font-bold text-emerald-600">('+sc+'/5)</span></div>';
   });
   document.getElementById('rStr').innerHTML=sh||'<p class="text-gray-400 text-sm">ไม่มีข้อที่ได้ 4-5 คะแนน</p>';
 
+  // Weaknesses
   let wh='';EC.forEach(it=>{
     const k=ik(it.c),sc=Number(d['i_'+k]||0);
+    if(d['i_'+k]==='NA')return;
     if(sc<=2){
       const nl=Math.min(sc+1,5),rec=it['s'+nl]||'';
-      wh+=\`<div class="bg-red-50 border border-red-100 rounded-lg p-3 text-sm"><span class="font-bold text-red-600">\${it.c}</span> \${esc(it.n)} <span class="ml-1 font-bold text-red-500">(\${sc}/5)</span><div class="text-gray-600 text-xs mt-1 nl">\${nlbr(it['s'+sc])}</div>\${rec?\`<div class="mt-1 text-indigo-700 text-xs bg-indigo-50 p-2 rounded nl">&rarr; เพื่อพัฒนาสู่ระดับ \${nl}: \${nlbr(rec)}</div>\`:''}</div>\`;
+      wh+='<div class="bg-red-50 border border-red-100 rounded-lg p-3 text-sm"><span class="font-bold text-red-600">'+it.c+'</span> '+esc(it.n)+' <span class="ml-1 font-bold text-red-500">('+sc+'/5)</span>'+(rec?'<div class="mt-1 text-indigo-700 text-xs bg-indigo-50 p-2 rounded nl">&rarr; เพื่อพัฒนาสู่ระดับ '+nl+': '+nlbr(rec)+'</div>':'')+'</div>';
     }
   });
   document.getElementById('rWeak').innerHTML=wh||'<p class="text-gray-400 text-sm">ไม่มีข้อที่ได้ 0-2 คะแนน</p>';
@@ -716,20 +1047,23 @@ function showReport(d,dm){
     const prev=AS.filter(s=>String(s.hospital_code)===codeStr&&s.round!==d.round).sort((a,b)=>(b.updated_at||b.round||'').localeCompare(a.updated_at||a.round||''));
     const p=prev[0];
     if(p){
-      const dd=[{n:'Revenue',c:dm.revenue,p:Number(p.dim_revenue||0)},{n:'Cost',c:dm.cost,p:Number(p.dim_cost||0)},{n:'Discipline',c:dm.discipline,p:Number(p.dim_discipline||0)},{n:'Collection',c:dm.collection,p:Number(p.dim_collection||0)},{n:'Process',c:dm.process,p:Number(p.dim_process||0)}];
-      let ch=\`<div class="text-xs text-gray-500 mb-2">เทียบกับรอบ \${p.round}</div><div class="grid grid-cols-2 md:grid-cols-5 gap-2">\`;
-      dd.forEach(x=>{const dt=x.c-x.p,ar=dt>0?\`<span class="text-emerald-600 font-bold">&uarr;+\${dt}</span>\`:dt<0?\`<span class="text-red-500 font-bold">&darr;\${dt}</span>\`:'<span class="text-gray-400">=</span>';
-      ch+=\`<div class="bg-gray-50 rounded-lg p-2 text-center text-xs"><div class="text-gray-500">\${x.n}</div><div>\${x.p}&rarr;\${x.c} \${ar}</div></div>\`;});
-      ch+='</div>';document.getElementById('rDelta').innerHTML=ch;
+      const pWpct=Number(p.wpct||0);
+      const dWpct=cs.wpct-pWpct;
+      let ch='<div class="text-xs text-gray-500 mb-2">เทียบกับรอบ '+p.round+' ('+pWpct.toFixed(1)+'% → '+cs.wpct.toFixed(1)+'%)</div>';
+      ch+='<div class="text-lg font-bold '+(dWpct>0?'text-emerald-600':dWpct<0?'text-red-500':'text-gray-500')+'">'+(dWpct>0?'&#8593;+':dWpct<0?'&#8595;':'')+dWpct.toFixed(1)+'%</div>';
+      document.getElementById('rDelta').innerHTML=ch;
     }else{document.getElementById('rDelta').textContent='ไม่มีข้อมูลรอบก่อนหน้า';}
   }
+
+  // Action Plan
+  document.getElementById('rActionPlan').innerHTML=renderActionPlan(cs,d.round);
   showPage('pageReport');
 }
 
 function viewRpt(round){
   if(!CH)return;
   const c=lg('r7_scores_'+CH.code+'_'+round);
-  if(c){c.round=round;const dm=calcDims(c);showReport(c,dm);}
+  if(c){c.round=round;const cs=calcCatScores(c,CH.level);const dm=calcDims(c,CH.level);showReport(c,cs,dm);}
   else{alert('ไม่พบข้อมูลรายข้อ กรุณาแก้ไขเพื่อเก็บข้อมูลก่อน');}
 }
 
@@ -737,13 +1071,17 @@ function viewRpt(round){
 function exportDashExcel(){
   const pv=document.getElementById('fProv').value,lv=document.getElementById('fLev').value,rn=document.getElementById('fRnd').value;
   const lm=getLS(AS,rn);let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);if(lv)fh=fh.filter(h=>h.level===lv);
-
   const rows=fh.map(h=>{
     const s=lm[String(h.code)]||{};
     const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
-    const row={'รหัส รพ.':h.code,'ชื่อ รพ.':h.name,'จังหวัด':h.province,'ระดับ':h.level,'รอบ':s.round||rn||'-','คะแนนรวม':s.total_raw||'-','Revenue%':s.dim_revenue||'-','Cost%':s.dim_cost||'-','Discipline%':s.dim_discipline||'-','Collection%':s.dim_collection||'-','Process%':s.dim_process||'-','Composite':s.composite||'-','Grade':s.grade||'-'};
-    // Add item-level scores
-    if(cached){EC.forEach(it=>{row[it.c+' '+it.n.substring(0,30)]=cached['i_'+ik(it.c)]||'-';});}
+    const row={'รหัส รพ.':h.code,'ชื่อ รพ.':h.name,'จังหวัด':h.province,'ระดับ':h.level,'รอบ':s.round||rn||'-',
+      'คะแนน(%)':s.wpct!=null?Number(s.wpct).toFixed(1):'-','ระดับผลประเมิน':s.grade?gradeLabel(s.grade):'-',
+      'คะแนนดิบ':s.total_raw||'-'};
+    if(cached){
+      const cs=calcCatScores(cached,h.level);
+      CATS.forEach((cat,i)=>{row['หมวด'+cat.id+'(%)']=cs.categories[i].pct.toFixed(1);});
+      EC.forEach(it=>{row[it.c]=cached['i_'+ik(it.c)]||'-';});
+    }
     return row;
   });
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
@@ -752,11 +1090,10 @@ function exportDashExcel(){
 }
 
 function exportMyExcel(){
-  if(!CH)return;
-  const codeStr=String(CH.code);
+  if(!CH)return;const codeStr=String(CH.code);
   const hs=AS.filter(s=>String(s.hospital_code)===codeStr);
   const rows=hs.map(s=>{
-    const row={'รอบ':s.round||'-','คะแนนรวม':s.total_raw||'-','Revenue%':s.dim_revenue||'-','Cost%':s.dim_cost||'-','Discipline%':s.dim_discipline||'-','Collection%':s.dim_collection||'-','Process%':s.dim_process||'-','Composite':s.composite||'-','Grade':s.grade||'-'};
+    const row={'รอบ':s.round||'-','คะแนน(%)':s.wpct!=null?Number(s.wpct).toFixed(1):'-','ระดับ':s.grade?gradeLabel(s.grade):'-','คะแนนดิบ':s.total_raw||'-'};
     const cached=lg('r7_scores_'+codeStr+'_'+s.round);
     if(cached){EC.forEach(it=>{row[it.c]=cached['i_'+ik(it.c)]||'-';});}
     return row;
@@ -767,21 +1104,18 @@ function exportMyExcel(){
 }
 
 function exportRptExcel(){
-  if(!_rptD||!_rptDm)return;
+  if(!_rptD||!_rptCat)return;
   const rows=EC.map(it=>{
-    const k=ik(it.c),sc=Number(_rptD['i_'+k]||0);
-    return{'ข้อ':it.c,'หัวข้อ':it.n,'หมวด':it.cat,'มิติ':it.dim,'คะแนน':sc,'คำอธิบาย':String(it['s'+sc]||'').replace(/\\\\n/g,'\\n')};
+    const k=ik(it.c),v=_rptD['i_'+k];
+    return{'ข้อ':it.c,'หัวข้อ':it.n,'หมวด':it.cat,'คะแนน':v==='NA'?'N/A':Number(v||0)};
   });
   rows.push({},{});
   rows.push({'ข้อ':'รพ.','คะแนน':CH?CH.name:'-'});
   rows.push({'ข้อ':'รอบ','คะแนน':_rptD.round||'-'});
-  rows.push({'ข้อ':'คะแนนรวม','คะแนน':_rptDm.composite});
-  rows.push({'ข้อ':'Grade','คะแนน':_rptDm.grade});
-  rows.push({'ข้อ':'Revenue%','คะแนน':_rptDm.revenue});
-  rows.push({'ข้อ':'Cost%','คะแนน':_rptDm.cost});
-  rows.push({'ข้อ':'Discipline%','คะแนน':_rptDm.discipline});
-  rows.push({'ข้อ':'Collection%','คะแนน':_rptDm.collection});
-  rows.push({'ข้อ':'Process%','คะแนน':_rptDm.process});
+  rows.push({'ข้อ':'คะแนน(%)','คะแนน':_rptCat.wpct.toFixed(1)});
+  rows.push({'ข้อ':'ระดับ','คะแนน':gradeText(_rptCat.grade)});
+  rows.push({'ข้อ':'คะแนนดิบ','คะแนน':_rptCat.totalRaw+'/'+_rptCat.totalMax});
+  CATS.forEach((cat,i)=>{rows.push({'ข้อ':cat.sn+'(%)','คะแนน':_rptCat.categories[i].pct.toFixed(1)});});
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Report');
   XLSX.writeFile(wb,'R7_Report_'+(CH?CH.name:'')+'_'+(_rptD.round||'').replace('/','_')+'.xlsx');
@@ -797,11 +1131,12 @@ function previewImport(e){
     const p=document.getElementById('impPrev');
     if(impRows.length>0){
       const cols=Object.keys(impRows[0]);
-      p.innerHTML=\`<p class="mb-1 font-bold">\${impRows.length} แถว</p><table class="w-full border text-xs"><thead><tr>\${cols.map(c=>'<th class="border p-1 bg-gray-50">'+esc(c)+'</th>').join('')}</tr></thead><tbody>\${impRows.slice(0,5).map(r=>'<tr>'+cols.map(c=>'<td class="border p-1">'+esc(String(r[c]||''))+'</td>').join('')+'</tr>').join('')}</tbody></table>\${impRows.length>5?'<p class="mt-1 text-gray-400">...แสดง 5 แถวแรก</p>':''}\`;
+      p.innerHTML='<p class="mb-1 font-bold">'+impRows.length+' แถว</p><table class="w-full border text-xs"><thead><tr>'+cols.map(c=>'<th class="border p-1 bg-gray-50">'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+impRows.slice(0,5).map(r=>'<tr>'+cols.map(c=>'<td class="border p-1">'+esc(String(r[c]||''))+'</td>').join('')+'</tr>').join('')+'</tbody></table>'+(impRows.length>5?'<p class="mt-1 text-gray-400">...แสดง 5 แถวแรก</p>':'');
     }else{p.innerHTML='<p class="text-gray-400">ไม่พบข้อมูล</p>';}
   };r.readAsArrayBuffer(f);
 }
 async function doImport(){
+  if(!CU||CU.role!=='admin'){alert('เฉพาะ Admin เท่านั้น');return;}
   if(!impRows||!impRows.length){alert('ไม่มีข้อมูล');return;}
   showLoad('กำลังนำเข้า '+impRows.length+' แถว...');
   let ok=0;

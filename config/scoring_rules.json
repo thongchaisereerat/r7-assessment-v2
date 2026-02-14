@@ -1,6 +1,6 @@
 {
-  "version": "3.1",
-  "description": "R7 Assessment Scoring Configuration",
+  "version": "4.0",
+  "description": "R7 Assessment Scoring Configuration — weighted 0-100 primary",
 
   "items": [
     "1.1", "1.2", "1.3", "1.4", "1.5", "1.6",
@@ -54,11 +54,13 @@
   },
 
   "grades": [
-    { "grade": "A", "min_composite": 85 },
-    { "grade": "B", "min_composite": 75 },
-    { "grade": "C", "min_composite": 65 },
-    { "grade": "D", "min_composite": 0 }
+    { "grade": "A", "label": "ดีเยี่ยม",     "min_pct": 90 },
+    { "grade": "B", "label": "ดี (ผ่าน)",     "min_pct": 80 },
+    { "grade": "C", "label": "พอใช้",         "min_pct": 70 },
+    { "grade": "D", "label": "ต้องปรับปรุง",   "min_pct": 0  }
   ],
+
+  "pass_threshold_pct": 80,
 
   "level_constraints": {
     "6.4": ["M1", "M2", "A"]

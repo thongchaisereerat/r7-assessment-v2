@@ -1,4 +1,4 @@
-// Unit tests for R7 Assessment scoring logic
+// Unit tests for R7 Assessment scoring logic (v4.0)
 // Run: node tests/scoring.test.js
 
 const assert = require('assert');
@@ -8,78 +8,84 @@ const path = require('path');
 // Load scoring rules
 const rules = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'scoring_rules.json'), 'utf8'));
 
-// ==================== Scoring Logic (extracted from build_v31.js) ====================
+// ==================== Grade System (new thresholds: 90/80/70) ====================
+function gradeFromPct(pct) { return pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : 'D'; }
+function gradeLabel(g) { return g === 'A' ? 'ดีเยี่ยม' : g === 'B' ? 'ดี (ผ่าน)' : g === 'C' ? 'พอใช้' : 'ต้องปรับปรุง'; }
 
-function calcDims(scores) {
-  // scores: { "1.1": 5, "1.2": 3, ... } or { i_1_1: 5, i_1_2: 3, ... }
-  // Normalize to i_X_Y format
+// ==================== PRIMARY: Category-based weighted 0-100 ====================
+function calcCatScores(scores, level) {
   const d = {};
   for (const [k, v] of Object.entries(scores)) {
-    if (k.startsWith('i_')) {
-      d[k] = Number(v) || 0;
-    } else if (/^\d+\.\d+$/.test(k)) {
-      d['i_' + k.replace('.', '_')] = Number(v) || 0;
-    }
+    if (k.startsWith('i_')) d[k] = Number(v) || 0;
+    else if (/^\d+\.\d+$/.test(k)) d['i_' + k.replace('.', '_')] = Number(v) || 0;
   }
 
-  // Category 4: pick top 2
+  const results = []; let totalRaw = 0, totalMax = 0;
+
+  rules.categories.forEach(cat => {
+    let raw = 0, mx = cat.max_score;
+
+    if (cat.id === 4) {
+      const c4 = cat.items.map(item => ({ k: item.replace('.', '_'), s: Number(d['i_' + item.replace('.', '_')] || 0) }));
+      c4.sort((a, b) => b.s - a.s || (a.k < b.k ? -1 : 1));
+      raw = c4[0].s + c4[1].s;
+      results.push({ id: cat.id, raw, mx, pct: mx > 0 ? Math.round(raw / mx * 1000) / 10 : 0, top2: [c4[0].k, c4[1].k] });
+    } else if (cat.id === 6) {
+      const lv64 = !level || (rules.level_constraints['6.4'] || []).includes(level);
+      cat.items.forEach(item => {
+        const k = item.replace('.', '_');
+        if (k === '6_4' && !lv64) { mx -= 5; return; }
+        raw += Number(d['i_' + k] || 0);
+      });
+      results.push({ id: cat.id, raw, mx, pct: mx > 0 ? Math.round(raw / mx * 1000) / 10 : 0 });
+    } else {
+      cat.items.forEach(item => { raw += Number(d['i_' + item.replace('.', '_')] || 0); });
+      results.push({ id: cat.id, raw, mx, pct: mx > 0 ? Math.round(raw / mx * 1000) / 10 : 0 });
+    }
+    totalRaw += raw; totalMax += mx;
+  });
+
+  const wpct = totalMax > 0 ? Math.round(totalRaw / totalMax * 1000) / 10 : 0;
+  const grade = gradeFromPct(wpct);
+  if (totalRaw > totalMax) totalRaw = totalMax;
+  return { categories: results, totalRaw, totalMax, wpct, grade, top2: results.find(c => c.id === 4)?.top2 || [] };
+}
+
+// ==================== SECONDARY: 5-Dimension scoring (for radar) ====================
+function calcDims(scores) {
+  const d = {};
+  for (const [k, v] of Object.entries(scores)) {
+    if (k.startsWith('i_')) d[k] = Number(v) || 0;
+    else if (/^\d+\.\d+$/.test(k)) d['i_' + k.replace('.', '_')] = Number(v) || 0;
+  }
   const c4 = ['4_1', '4_2', '4_3', '4_4', '4_5'].map(k => ({ k, s: Number(d['i_' + k] || 0) }));
   c4.sort((a, b) => b.s - a.s || (a.k < b.k ? -1 : 1));
   const top2 = [c4[0].k, c4[1].k];
-
-  // Revenue: cat4 top2 + 5.1
-  let rS = 0;
-  top2.forEach(k => rS += Number(d['i_' + k] || 0));
-  rS += Number(d.i_5_1 || 0);
-
-  // Cost
-  let coS = 0;
-  ['6_1', '6_2', '6_3', '6_4', '6_5'].forEach(k => coS += Number(d['i_' + k] || 0));
-
-  // Discipline
-  let diS = 0;
-  ['1_3', '1_4', '1_5', '1_6', '3_12', '3_13'].forEach(k => diS += Number(d['i_' + k] || 0));
-
-  // Collection
-  let clS = 0;
-  ['3_7', '3_8', '3_9', '3_10', '3_11'].forEach(k => clS += Number(d['i_' + k] || 0));
-
-  // Process
-  let prS = 0;
-  ['1_1', '1_2', '2_1', '2_2', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6', '3_14'].forEach(k => prS += Number(d['i_' + k] || 0));
-
-  const rv = Math.round(rS / 15 * 100);
-  const co = Math.round(coS / 25 * 100);
-  const di = Math.round(diS / 30 * 100);
-  const cl = Math.round(clS / 25 * 100);
-  const pr = Math.round(prS / 55 * 100);
-  const cp = Math.round(rv * 0.35 + co * 0.15 + di * 0.30 + cl * 0.15 + pr * 0.05);
-  const grade = cp >= 85 ? 'A' : cp >= 75 ? 'B' : cp >= 65 ? 'C' : 'D';
-
-  return { revenue: rv, cost: co, discipline: di, collection: cl, process: pr, composite: cp, grade, top2 };
+  let rS = 0; top2.forEach(k => rS += Number(d['i_' + k] || 0)); rS += Number(d.i_5_1 || 0);
+  let coS = 0; ['6_1', '6_2', '6_3', '6_4', '6_5'].forEach(k => coS += Number(d['i_' + k] || 0));
+  let diS = 0; ['1_3', '1_4', '1_5', '1_6', '3_12', '3_13'].forEach(k => diS += Number(d['i_' + k] || 0));
+  let clS = 0; ['3_7', '3_8', '3_9', '3_10', '3_11'].forEach(k => clS += Number(d['i_' + k] || 0));
+  let prS = 0; ['1_1', '1_2', '2_1', '2_2', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6', '3_14'].forEach(k => prS += Number(d['i_' + k] || 0));
+  const rv = Math.round(rS / 15 * 100), co = Math.round(coS / 25 * 100), di = Math.round(diS / 30 * 100);
+  const cl = Math.round(clS / 25 * 100), pr = Math.round(prS / 55 * 100);
+  return { revenue: rv, cost: co, discipline: di, collection: cl, process: pr, top2 };
 }
 
-// ==================== Tests ====================
-
-let passed = 0;
-let failed = 0;
-
+// ==================== Test runner ====================
+let passed = 0, failed = 0;
 function test(name, fn) {
-  try {
-    fn();
-    passed++;
-    console.log(`  PASS: ${name}`);
-  } catch (e) {
-    failed++;
-    console.error(`  FAIL: ${name}`);
-    console.error(`        ${e.message}`);
-  }
+  try { fn(); passed++; console.log(`  PASS: ${name}`); }
+  catch (e) { failed++; console.error(`  FAIL: ${name}`); console.error(`        ${e.message}`); }
 }
 
-console.log('\n=== R7 Scoring Unit Tests ===\n');
+console.log('\n=== R7 Scoring Unit Tests (v4.0) ===\n');
 
 // --- Config validation ---
 console.log('Config Validation:');
+
+test('Config version is 4.0', () => {
+  assert.strictEqual(rules.version, '4.0');
+});
 
 test('Config has 33 items', () => {
   assert.strictEqual(rules.items.length, 33);
@@ -98,12 +104,32 @@ test('Dimension weights sum to 1.0', () => {
   assert.strictEqual(Math.round(sum * 100), 100);
 });
 
-test('Config has 4 grade thresholds', () => {
+test('Config has 4 grade thresholds (new: 90/80/70/0)', () => {
   assert.strictEqual(rules.grades.length, 4);
+  assert.strictEqual(rules.grades[0].min_pct, 90);
+  assert.strictEqual(rules.grades[1].min_pct, 80);
+  assert.strictEqual(rules.grades[2].min_pct, 70);
+  assert.strictEqual(rules.grades[3].min_pct, 0);
+});
+
+test('Config grade labels are Thai', () => {
+  assert.strictEqual(rules.grades[0].label, 'ดีเยี่ยม');
+  assert.strictEqual(rules.grades[1].label, 'ดี (ผ่าน)');
+  assert.strictEqual(rules.grades[2].label, 'พอใช้');
+  assert.strictEqual(rules.grades[3].label, 'ต้องปรับปรุง');
+});
+
+test('Pass threshold is 80%', () => {
+  assert.strictEqual(rules.pass_threshold_pct, 80);
 });
 
 test('Total max raw is 150', () => {
   assert.strictEqual(rules.total_raw_max, 150);
+});
+
+test('Category max scores sum to 150', () => {
+  const sum = rules.categories.reduce((s, c) => s + c.max_score, 0);
+  assert.strictEqual(sum, 150);
 });
 
 test('Every item maps to a dimension', () => {
@@ -112,199 +138,266 @@ test('Every item maps to a dimension', () => {
   });
 });
 
-// --- Scoring logic tests ---
-console.log('\nScoring Logic:');
-
-test('All zeros → composite 0, grade D', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 0);
-  const r = calcDims(scores);
-  assert.strictEqual(r.composite, 0);
-  assert.strictEqual(r.grade, 'D');
+test('6.4 level_constraints defined', () => {
+  assert.deepStrictEqual(rules.level_constraints['6.4'], ['M1', 'M2', 'A']);
 });
 
-test('All fives → composite 100, grade A', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 5);
-  const r = calcDims(scores);
-  assert.strictEqual(r.composite, 100);
+// --- New Grade Threshold Tests (90/80/70) ---
+console.log('\nGrade Thresholds (new 90/80/70):');
+
+test('Grade boundary: 100 → A (ดีเยี่ยม)', () => {
+  assert.strictEqual(gradeFromPct(100), 'A');
+  assert.strictEqual(gradeLabel('A'), 'ดีเยี่ยม');
+});
+
+test('Grade boundary: 90 → A', () => {
+  assert.strictEqual(gradeFromPct(90), 'A');
+});
+
+test('Grade boundary: 89.9 → B', () => {
+  assert.strictEqual(gradeFromPct(89.9), 'B');
+});
+
+test('Grade boundary: 80 → B (ดี ผ่าน)', () => {
+  assert.strictEqual(gradeFromPct(80), 'B');
+  assert.strictEqual(gradeLabel('B'), 'ดี (ผ่าน)');
+});
+
+test('Grade boundary: 79.9 → C', () => {
+  assert.strictEqual(gradeFromPct(79.9), 'C');
+});
+
+test('Grade boundary: 70 → C (พอใช้)', () => {
+  assert.strictEqual(gradeFromPct(70), 'C');
+  assert.strictEqual(gradeLabel('C'), 'พอใช้');
+});
+
+test('Grade boundary: 69.9 → D', () => {
+  assert.strictEqual(gradeFromPct(69.9), 'D');
+});
+
+test('Grade boundary: 0 → D (ต้องปรับปรุง)', () => {
+  assert.strictEqual(gradeFromPct(0), 'D');
+  assert.strictEqual(gradeLabel('D'), 'ต้องปรับปรุง');
+});
+
+// --- Weighted 0-100 Category Scoring ---
+console.log('\nWeighted 0-100 (calcCatScores):');
+
+test('All zeros → wpct 0, grade D', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  const r = calcCatScores(scores, 'M1');
+  assert.strictEqual(r.wpct, 0);
+  assert.strictEqual(r.grade, 'D');
+  assert.strictEqual(r.totalRaw, 0);
+  assert.strictEqual(r.totalMax, 150);
+});
+
+test('All fives → wpct 100, grade A', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'M1');
+  assert.strictEqual(r.wpct, 100);
   assert.strictEqual(r.grade, 'A');
-  assert.strictEqual(r.revenue, 100);
-  assert.strictEqual(r.cost, 100);
-  assert.strictEqual(r.discipline, 100);
-  assert.strictEqual(r.collection, 100);
-  assert.strictEqual(r.process, 100);
+  assert.strictEqual(r.totalRaw, 150);
+  assert.strictEqual(r.totalMax, 150);
+});
+
+test('totalRaw never exceeds totalMax', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'M1');
+  assert.ok(r.totalRaw <= r.totalMax, `totalRaw ${r.totalRaw} > totalMax ${r.totalMax}`);
 });
 
 test('Category 4 top-2 selection: highest two', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 0);
-  scores['4.1'] = 5;
-  scores['4.2'] = 3;
-  scores['4.3'] = 4;
-  scores['4.4'] = 1;
-  scores['4.5'] = 2;
-  const r = calcDims(scores);
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  scores['4.1'] = 5; scores['4.2'] = 3; scores['4.3'] = 4; scores['4.4'] = 1; scores['4.5'] = 2;
+  const r = calcCatScores(scores, 'M1');
   assert.deepStrictEqual(r.top2.sort(), ['4_1', '4_3'].sort());
+  const cat4 = r.categories.find(c => c.id === 4);
+  assert.strictEqual(cat4.raw, 9); // 5+4
+  assert.strictEqual(cat4.mx, 10);
 });
 
 test('Category 4 tie-breaking: lower item number wins', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 0);
-  scores['4.1'] = 3;
-  scores['4.2'] = 3;
-  scores['4.3'] = 3;
-  scores['4.4'] = 3;
-  scores['4.5'] = 3;
-  const r = calcDims(scores);
-  // All tied at 3, sort by key ascending → 4_1, 4_2
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  scores['4.1'] = 3; scores['4.2'] = 3; scores['4.3'] = 3; scores['4.4'] = 3; scores['4.5'] = 3;
+  const r = calcCatScores(scores, 'M1');
   assert.deepStrictEqual(r.top2, ['4_1', '4_2']);
 });
 
-test('Grade boundary: 85 → A', () => {
-  const r = { composite: 85 };
-  assert.strictEqual(r.composite >= 85 ? 'A' : 'D', 'A');
+test('Cat4 top-2 only contributes to total (not all 5)', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  scores['4.1'] = 5; scores['4.2'] = 5; scores['4.3'] = 5; scores['4.4'] = 5; scores['4.5'] = 5;
+  const r = calcCatScores(scores, 'M1');
+  const cat4 = r.categories.find(c => c.id === 4);
+  assert.strictEqual(cat4.raw, 10); // only top 2 × 5 = 10
+  assert.strictEqual(r.totalRaw, 10);
 });
 
-test('Grade boundary: 84 → B', () => {
-  const c = 84;
-  const g = c >= 85 ? 'A' : c >= 75 ? 'B' : c >= 65 ? 'C' : 'D';
-  assert.strictEqual(g, 'B');
+test('Cat4 choose-2: only selected items contribute (simulated by zeroing unselected)', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  // User selects 4.2 and 4.4, scores them 5 each. Others stay 0.
+  scores['4.2'] = 5; scores['4.4'] = 5;
+  const r = calcCatScores(scores, 'M1');
+  assert.deepStrictEqual(r.top2.sort(), ['4_2', '4_4'].sort());
+  const cat4 = r.categories.find(c => c.id === 4);
+  assert.strictEqual(cat4.raw, 10);
 });
 
-test('Grade boundary: 75 → B', () => {
-  const c = 75;
-  const g = c >= 85 ? 'A' : c >= 75 ? 'B' : c >= 65 ? 'C' : 'D';
-  assert.strictEqual(g, 'B');
+// --- 6.4 N/A Denominator Tests ---
+console.log('\n6.4 N/A Denominator Adjustment:');
+
+test('Level M1 → 6.4 applies, denominator 25', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'M1');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 25);
+  assert.strictEqual(r.totalMax, 150);
 });
 
-test('Grade boundary: 65 → C', () => {
-  const c = 65;
-  const g = c >= 85 ? 'A' : c >= 75 ? 'B' : c >= 65 ? 'C' : 'D';
-  assert.strictEqual(g, 'C');
+test('Level M2 → 6.4 applies, denominator 25', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'M2');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 25);
 });
 
-test('Grade boundary: 64 → D', () => {
-  const c = 64;
-  const g = c >= 85 ? 'A' : c >= 75 ? 'B' : c >= 65 ? 'C' : 'D';
-  assert.strictEqual(g, 'D');
+test('Level A → 6.4 applies, denominator 25', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'A');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 25);
+});
+
+test('Level F1 → 6.4 N/A, denominator 20', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'F1');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 20);
+  assert.strictEqual(r.totalMax, 145);
+});
+
+test('Level F2 → 6.4 N/A, denominator 20', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'F2');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 20);
+});
+
+test('Level S → 6.4 N/A, denominator 20', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'S');
+  const cat6 = r.categories.find(c => c.id === 6);
+  assert.strictEqual(cat6.mx, 20);
+});
+
+test('6.4 N/A does not penalize: all fives + F2 still 100%', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 5);
+  const r = calcCatScores(scores, 'F2');
+  assert.strictEqual(r.wpct, 100);
+  assert.strictEqual(r.grade, 'A');
+});
+
+test('6.4 N/A adjusts pct correctly: F2 with mixed scores', () => {
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  scores['6.1'] = 5; scores['6.2'] = 5; scores['6.3'] = 5; scores['6.4'] = 0; scores['6.5'] = 5;
+  const r = calcCatScores(scores, 'F2');
+  const cat6 = r.categories.find(c => c.id === 6);
+  // F2 → 6.4 excluded; raw = 5+5+5+5 = 20, mx = 20, pct = 100
+  assert.strictEqual(cat6.raw, 20);
+  assert.strictEqual(cat6.mx, 20);
+  assert.strictEqual(cat6.pct, 100);
 });
 
 // --- Golden Test Case 1: High performer ---
-console.log('\nGolden Case 1 (High - Grade A):');
+console.log('\nGolden Case 1 (High - Grade A, level M1):');
 
 const case1 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'fixtures', 'golden_case_high.json'), 'utf8'));
-const r1 = calcDims(case1.input.scores);
+const r1 = calcCatScores(case1.input.scores, case1.hospital.level);
+const d1 = calcDims(case1.input.scores);
 
 test('Cat4 top2 = [4_1, 4_5]', () => {
-  assert.deepStrictEqual(r1.top2.sort(), ['4_1', '4_5'].sort());
+  assert.deepStrictEqual(r1.top2.sort(), case1.expected.cat4_top2.sort());
 });
 
-test('Revenue = 93%', () => {
-  // top2(4.1=5,4.5=5) + 5.1=4 = 14/15 = 93.33 → 93
-  assert.strictEqual(r1.revenue, 93);
+test('totalRaw = 138', () => { assert.strictEqual(r1.totalRaw, case1.expected.total_raw); });
+test('totalMax = 150', () => { assert.strictEqual(r1.totalMax, case1.expected.total_max); });
+test('wpct = 92.0', () => { assert.strictEqual(r1.wpct, case1.expected.wpct); });
+test('grade = A', () => { assert.strictEqual(r1.grade, case1.expected.grade); });
+
+test('Cat1 = 28/30 (93.3%)', () => {
+  const c = r1.categories.find(x => x.id === 1);
+  assert.strictEqual(c.raw, 28); assert.strictEqual(c.pct, 93.3);
 });
 
-test('Cost = 92%', () => {
-  // 5+4+5+4+5 = 23/25 = 92
-  assert.strictEqual(r1.cost, 92);
+test('Cat3 = 64/70 (91.4%)', () => {
+  const c = r1.categories.find(x => x.id === 3);
+  assert.strictEqual(c.raw, 64); assert.strictEqual(c.pct, 91.4);
 });
 
-test('Discipline = 90%', () => {
-  // 5+5+4+4+5+4 = 27/30 = 90
-  assert.strictEqual(r1.discipline, 90);
+test('Cat4 = 10/10 (100%)', () => {
+  const c = r1.categories.find(x => x.id === 4);
+  assert.strictEqual(c.raw, 10); assert.strictEqual(c.pct, 100);
 });
 
-test('Collection = 92%', () => {
-  // 5+4+5+4+5 = 23/25 = 92
-  assert.strictEqual(r1.collection, 92);
+test('Cat6 = 23/25 (92%) [M1 → 6.4 applies]', () => {
+  const c = r1.categories.find(x => x.id === 6);
+  assert.strictEqual(c.raw, 23); assert.strictEqual(c.mx, 25); assert.strictEqual(c.pct, 92);
 });
 
-test('Process = 93%', () => {
-  // 5+5+5+4+5+5+4+4+5+4+5 = 51/55 = 92.7 → 93
-  assert.strictEqual(r1.process, 93);
-});
-
-test('Composite = 92', () => {
-  assert.strictEqual(r1.composite, 92);
-});
-
-test('Grade = A', () => {
-  assert.strictEqual(r1.grade, 'A');
-});
+// Dimension secondary checks
+test('[secondary] Revenue dim = 93', () => { assert.strictEqual(d1.revenue, 93); });
+test('[secondary] Cost dim = 92', () => { assert.strictEqual(d1.cost, 92); });
 
 // --- Golden Test Case 2: Low performer ---
-console.log('\nGolden Case 2 (Low - Grade D):');
+console.log('\nGolden Case 2 (Low - Grade D, level F2):');
 
 const case2 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'fixtures', 'golden_case_low.json'), 'utf8'));
-const r2 = calcDims(case2.input.scores);
+const r2 = calcCatScores(case2.input.scores, case2.hospital.level);
+const d2 = calcDims(case2.input.scores);
 
 test('Cat4 top2 = [4_1, 4_3]', () => {
-  assert.deepStrictEqual(r2.top2.sort(), ['4_1', '4_3'].sort());
+  assert.deepStrictEqual(r2.top2.sort(), case2.expected.cat4_top2.sort());
 });
 
-test('Revenue = 47%', () => {
-  // top2(4.1=3,4.3=2) + 5.1=2 = 7/15 = 46.67 → 47
-  assert.strictEqual(r2.revenue, 47);
+test('totalRaw = 47', () => { assert.strictEqual(r2.totalRaw, case2.expected.total_raw); });
+test('totalMax = 145 (6.4 N/A)', () => { assert.strictEqual(r2.totalMax, case2.expected.total_max); });
+test('wpct = 32.4', () => { assert.strictEqual(r2.wpct, case2.expected.wpct); });
+test('grade = D', () => { assert.strictEqual(r2.grade, case2.expected.grade); });
+
+test('Cat6 = 6/20 (30%) [F2 → 6.4 excluded]', () => {
+  const c = r2.categories.find(x => x.id === 6);
+  assert.strictEqual(c.raw, 6); assert.strictEqual(c.mx, 20); assert.strictEqual(c.pct, 30);
 });
 
-test('Cost = 24%', () => {
-  // 2+1+2+0+1 = 6/25 = 24
-  assert.strictEqual(r2.cost, 24);
+test('Cat3 = 22/70 (31.4%)', () => {
+  const c = r2.categories.find(x => x.id === 3);
+  assert.strictEqual(c.raw, 22); assert.strictEqual(c.pct, 31.4);
 });
 
-test('Discipline = 30%', () => {
-  // 2+1+2+1+2+1 = 9/30 = 30
-  assert.strictEqual(r2.discipline, 30);
-});
+// Dimension secondary checks
+test('[secondary] Revenue dim = 47', () => { assert.strictEqual(d2.revenue, 47); });
+test('[secondary] Discipline dim = 30', () => { assert.strictEqual(d2.discipline, 30); });
+test('[secondary] Process dim = 31', () => { assert.strictEqual(d2.process, 31); });
 
-test('Collection = 32%', () => {
-  // 2+1+2+1+2 = 8/25 = 32
-  assert.strictEqual(r2.collection, 32);
-});
-
-test('Process pct', () => {
-  // 2+1+2+1+2+1+2+1+2+1+2 = 17/55 = 30.9 → 31
-  assert.strictEqual(r2.process, 31);
-});
-
-test('Composite (low case)', () => {
-  // round(47*0.35 + 24*0.15 + 30*0.30 + 32*0.15 + 31*0.05)
-  // = round(16.45 + 3.6 + 9.0 + 4.8 + 1.55) = round(35.4) = 35
-  assert.strictEqual(r2.composite, 35);
-});
-
-test('Grade = D', () => {
-  assert.strictEqual(r2.grade, 'D');
-});
-
-// --- Dimension isolation tests ---
-console.log('\nDimension Isolation:');
+// --- Dimension isolation tests (secondary) ---
+console.log('\nDimension Isolation (secondary):');
 
 test('Only Revenue items → only Revenue pct > 0', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 0);
-  scores['4.1'] = 5;
-  scores['4.2'] = 5;
-  scores['5.1'] = 5;
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  scores['4.1'] = 5; scores['4.2'] = 5; scores['5.1'] = 5;
   const r = calcDims(scores);
   assert.strictEqual(r.revenue, 100);
   assert.strictEqual(r.cost, 0);
   assert.strictEqual(r.discipline, 0);
-  assert.strictEqual(r.collection, 0);
-  assert.strictEqual(r.process, 0);
 });
 
 test('Only Cost items → only Cost pct > 0', () => {
-  const scores = {};
-  rules.items.forEach(i => scores[i] = 0);
-  scores['6.1'] = 5; scores['6.2'] = 5; scores['6.3'] = 5; scores['6.4'] = 5; scores['6.5'] = 5;
+  const scores = {}; rules.items.forEach(i => scores[i] = 0);
+  ['6.1', '6.2', '6.3', '6.4', '6.5'].forEach(k => scores[k] = 5);
   const r = calcDims(scores);
   assert.strictEqual(r.cost, 100);
   assert.strictEqual(r.revenue, 0);
-  assert.strictEqual(r.discipline, 0);
-  assert.strictEqual(r.collection, 0);
-  assert.strictEqual(r.process, 0);
 });
 
 // --- Summary ---
