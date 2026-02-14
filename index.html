@@ -433,7 +433,7 @@ function buildRounds(){
   HS.forEach(r=>roundSet.add(r.r));
   AS.forEach(s=>{if(s.round)roundSet.add(s.round);});
   const now=new Date();const by=now.getFullYear()+543;
-  for(let y=by-2;y<=by+1;y++){roundSet.add('1/'+y);roundSet.add('2/'+y);}
+  for(let y=by-5;y<=by+3;y++){roundSet.add('1/'+y);roundSet.add('2/'+y);}
   return[...roundSet].sort((a,b)=>{const[ra,ya]=a.split('/').map(Number);const[rb,yb]=b.split('/').map(Number);return yb!==ya?yb-ya:rb-ra;});
 }
 function populateRoundSelectors(){
@@ -814,7 +814,7 @@ async function loadMyDash(code){
   if(sorted.length>0){
     document.getElementById('mHist').innerHTML=`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">ระดับ</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-center">จัดการ</th></tr></thead><tbody>${sorted.map(s=>{
       const st=lg('r7_status_'+codeStr+'_'+s.round);
-      const isSubmitted=st&&st.status==='submitted';
+      const isSubmitted=(st&&st.status==='submitted')||s._src==='hist'||!st;
       const wp=s.wpct!=null?Number(s.wpct).toFixed(1):'-';
       return `<tr class="border-b border-gray-50"><td class="p-2">${s.round||'-'}</td><td class="p-2 text-center font-bold">${wp}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${gradeClass(s.grade)}">${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center">${isSubmitted?'<button onclick="viewRpt(\''+s.round+'\')  " class="text-emerald-600 hover:underline text-xs">รายงาน</button>':'<button onclick="editAssess(\''+s.round+'\' )" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button>'}</td></tr>`;
     }).join('')}</tbody></table>`;
