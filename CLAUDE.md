@@ -23,8 +23,8 @@
 - Composite Score: 5 มิติ (Revenue 35%, Discipline 30%, Cost 15%, Collection 15%, Process 5%)
 
 ## APIs
-- Apps Script: https://script.google.com/macros/s/AKfycbzYRBtTbeZZ_w4yM15PlqNgvAFNU1lj98mZwgpaXqTVPQxkS7SgvyQPVJHNvkUkzT4hNA/exec
-- POST ใช้ mode: 'no-cors' เพื่อหลีกเลี่ยง CORS
+- Apps Script v2: https://script.google.com/macros/s/AKfycbzOfoslb872k5viPjuVwaQJE21jc9sV_38S9Y3uq0LS1jTrIPQb9XXRjMZCtBUTOZ3V1g/exec
+- ใช้ GET + URL params (action, data)
 
 ## Completed Features (as of 2026-02-14)
 - Public Dashboard + Login system (Admin/Hospital)
