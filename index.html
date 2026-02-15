@@ -484,7 +484,11 @@ async function pAPI(d){
   try{
     const resp=await fetch(url,{signal:ac.signal});
     clearTimeout(t);
-    try{const r=await resp.json();return r;}catch(je){return{success:true,note:'non-json response'};}
+    const txt=await resp.text();
+    try{return JSON.parse(txt);}catch(je){
+      if(txt.toLowerCase().includes('success'))return{success:true,note:'non-json ok'};
+      return{success:false,error:'Server returned non-JSON: '+txt.substring(0,100)};
+    }
   }catch(e){
     clearTimeout(t);
     return{success:false,error:e.name==='AbortError'?'Request timeout (20s)':e.message};
@@ -576,8 +580,12 @@ async function init(){
         if(cached){
           const cs=calcCatScores(cached,level);
           sc.wpct=cs.wpct;sc.grade=cs.grade;sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;
+        }else if(sc.composite!==undefined){
+          // Use server's weighted score directly
+          sc.wpct=Number(sc.composite);
+          sc.grade=sc.grade||gradeFromPct(sc.wpct);
         }else{
-          // Fallback: estimate from raw score
+          // Last fallback: estimate from raw score
           const raw=Number(sc.total_raw||0);
           const mx=(!level||['M1','M2','A'].includes(level))?150:145;
           sc.wpct=mx>0?Math.round(raw/mx*1000)/10:0;
@@ -1316,7 +1324,10 @@ async function saveAssess(){
   const existIdx=AS.findIndex(s=>String(s.hospital_code)===String(CH.code)&&s.round===d.round);
   if(existIdx>=0)AS[existIdx]=newEntry;else AS.push(newEntry);
   // Also try refreshing from server (non-blocking)
-  gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){const hist=processHistorical();AS=sr.scores.concat(hist);}}).catch(()=>{});
+  gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){
+    sr.scores.forEach(sc=>{if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite);if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});
+    const hist=processHistorical();AS=sr.scores.concat(hist);
+  }}).catch(()=>{});
   showReport(d,cs,dm,serverOk);
   }catch(err){
     console.error('saveAssess error:',err);
@@ -1635,7 +1646,7 @@ async function doImport(){
   hideLoad();
   alert('นำเข้าสำเร็จ '+ok+'/'+impRows.length+' แถว');
   document.getElementById('importModal').classList.add('hidden');impRows=null;document.getElementById('impPrev').innerHTML='';document.getElementById('impFile').value='';
-  try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0)AS=sr.scores.concat(processHistorical());else AS=processHistorical();}catch(e){}
+  try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0){sr.scores.forEach(sc=>{if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite);if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});AS=sr.scores.concat(processHistorical());}else AS=processHistorical();}catch(e){}
   refreshDash();
 }
 </script>
