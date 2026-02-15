@@ -1299,7 +1299,7 @@ async function saveAssess(){
   lr('r7_draft_'+CH.code+'_'+d.round);
   ls('r7_status_'+CH.code+'_'+d.round,{status:'submitted',at:new Date().toISOString(),by:CU?CU.username:'unknown'});
 
-  const payload={action:'saveScore',hospital_code:String(CH.code),round:"'"+d.round,date:d.date,
+  const payload={action:'saveScore',hospital_code:String(CH.code),round:d.round,date:d.date,
     composite:cs.wpct,grade:cs.grade,wpct:cs.wpct,
     dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
     cat4_selected:(cs.top2||[]).map(k=>k.replace('_','.')).join(','),
