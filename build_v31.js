@@ -843,6 +843,8 @@ function getPrevRound(rn){
 function openDetail(code){
   const codeStr=String(code);
   const h=AH.find(x=>String(x.code)===codeStr);if(!h)return;
+  // Clear search box so it doesn't persist
+  const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
   document.getElementById('dName').textContent=h.name;document.getElementById('dProv').textContent=h.province;
   document.getElementById('dLev').textContent='ระดับ '+h.level;
   const rn=document.getElementById('fRnd').value;
@@ -963,7 +965,7 @@ function openDetail(code){
     const cs=calcCatScores(cached,h.level);
     const sorted=[...cs.categories].sort((a,b)=>a.pct-b.pct);
     const lowest=sorted[0];const lowCat=CATS.find(c=>c.id===lowest.id);
-    const qr=QR.filter(q=>q.cat===lowest.id);
+    const qr=QUICK_WINS.filter(q=>q.cat===lowest.id);
     stratHtml='<div class="space-y-2">';
     stratHtml+='<div class="text-xs text-gray-500">จากการวิเคราะห์คะแนนรายหมวด</div>';
     stratHtml+='<div class="bg-red-50 rounded-lg p-2 text-xs"><span class="font-bold text-red-700">ลำดับที่ 1:</span> '+(lowCat?lowCat.nm:'-')+' ('+lowest.pct.toFixed(1)+'%)</div>';
