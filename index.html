@@ -12,10 +12,11 @@
 .grade-excellent{background:#10b981;color:#fff}.grade-good{background:#3b82f6;color:#fff}.grade-fair{background:#f59e0b;color:#fff}.grade-improve{background:#ef4444;color:#fff}
 .dim-card{transition:transform .2s}.dim-card:hover{transform:translateY(-2px)}
 .cat-1{border-left:4px solid #3b82f6;background:#eff6ff}.cat-2{border-left:4px solid #22c55e;background:#f0fdf4}.cat-3{border-left:4px solid #8b5cf6;background:#f5f3ff}.cat-4{border-left:4px solid #f59e0b;background:#fffbeb}.cat-5{border-left:4px solid #ec4899;background:#fdf2f8}.cat-6{border-left:4px solid #ef4444;background:#fef2f2}
-.big-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;border:2px solid transparent;min-width:120px;gap:6px}
-.big-btn-yes{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}.big-btn-yes:hover{background:#dcfce7}.big-btn-yes.active{background:#16a34a;color:#fff;border-color:#16a34a;box-shadow:0 2px 8px rgba(22,163,74,.3)}
-.big-btn-no{background:#fef2f2;color:#dc2626;border-color:#fecaca}.big-btn-no:hover{background:#fee2e2}.big-btn-no.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 2px 8px rgba(220,38,38,.3)}
-.fine-btn{width:38px;height:38px;border-radius:8px;border:2px solid #e5e7eb;font-weight:700;font-size:14px;cursor:pointer;transition:all .12s;background:#fff}.fine-btn:hover{background:#e0e7ff;border-color:#818cf8}.fine-btn.active{background:#4f46e5;color:#fff;border-color:#4f46e5}
+.score-btn{width:48px;height:48px;border-radius:10px;border:2px solid #d1d5db;font-weight:700;font-size:18px;cursor:pointer;transition:all .15s;background:#fff;display:inline-flex;align-items:center;justify-content:center}
+.score-btn:hover{background:#e0e7ff;border-color:#818cf8;transform:scale(1.05)}
+.score-btn.active{background:#4f46e5;color:#fff;border-color:#4f46e5;box-shadow:0 2px 8px rgba(79,70,229,.3);transform:scale(1.08)}
+.score-btn.s0.active{background:#dc2626;border-color:#dc2626}.score-btn.s1.active{background:#ea580c;border-color:#ea580c}.score-btn.s2.active{background:#d97706;border-color:#d97706}.score-btn.s3.active{background:#ca8a04;border-color:#ca8a04}.score-btn.s4.active{background:#16a34a;border-color:#16a34a}.score-btn.s5.active{background:#059669;border-color:#059669}
+.c4-top{display:inline-flex;align-items:center;gap:3px;padding:2px 10px;border-radius:9999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;border:1px solid #fbbf24;animation:fadeIn .3s ease}
 .score-level{cursor:pointer;padding:6px 10px;border-radius:6px;margin:2px 0;transition:all .15s}.score-level:hover{background:#dbeafe}.score-level.selected{background:#3b82f6;color:#fff}
 .top-badge{background:#f59e0b;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700;margin-left:6px;vertical-align:middle}
 .submitted-badge{background:#10b981;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700}.draft-badge{background:#f59e0b;color:#fff;font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700}
@@ -28,8 +29,6 @@
 .overlay-loader .spinner{width:48px;height:48px;border:4px solid #e5e7eb;border-radius:50%;border-top-color:#4f46e5;animation:spin .8s linear infinite}
 .nl{white-space:pre-line}
 .qw-chip{display:inline-block;padding:4px 12px;border-radius:9999px;background:#eff6ff;color:#3b82f6;font-size:12px;cursor:pointer;border:1px solid #bfdbfe;transition:all .15s;margin:2px}.qw-chip:hover{background:#3b82f6;color:#fff}
-.c4-unsel .big-btn,.c4-unsel .fine-btn,.c4-unsel .score-level{pointer-events:none;opacity:.25}
-.c4-ck{width:18px;height:18px;accent-color:#d97706;cursor:pointer}
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -255,6 +254,7 @@
 
 <!-- PAGE: REPORT -->
 <div id="pageReport" data-testid="page-report" class="hidden container mx-auto px-4 py-6 fade-in">
+<div id="rSaveToast" class="hidden mb-4 rounded-xl p-4 border text-sm fade-in"></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <h3 class="text-lg font-bold text-gray-800 mb-1">รายงานผลประเมิน</h3>
 <p id="rSub" class="text-gray-500 text-sm mb-4">-</p>
@@ -476,22 +476,18 @@ async function gAPI(a,p={}){
   catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
 }
 async function pAPI(d){
-  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),15000);
+  // Server reads action + data from URL params (not POST body)
+  const url=new URL(API);
+  url.searchParams.append('action',d.action||'saveScore');
+  url.searchParams.append('data',JSON.stringify(d));
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),20000);
   try{
-    // Try normal fetch first (some Apps Script deployments support CORS)
-    const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});
+    const resp=await fetch(url,{signal:ac.signal});
     clearTimeout(t);
-    if(resp.type==='opaque'){return{success:true,note:'opaque response'};}
     try{const r=await resp.json();return r;}catch(je){return{success:true,note:'non-json response'};}
   }catch(e){
     clearTimeout(t);
-    if(e.name==='AbortError')return{success:false,error:'Request timeout'};
-    // CORS error — retry with no-cors (request goes through, response is opaque)
-    try{
-      const ac2=new AbortController();const t2=setTimeout(()=>ac2.abort(),15000);
-      await fetch(API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac2.signal});
-      clearTimeout(t2);return{success:true,note:'no-cors fallback'};
-    }catch(e2){return{success:false,error:e2.message};}
+    return{success:false,error:e.name==='AbortError'?'Request timeout (20s)':e.message};
   }
 }
 
@@ -1157,7 +1153,7 @@ function renderItems(){
   const ct=document.getElementById('aItems');let h='';
   CATS.forEach(cat=>{
     const its=EC.filter(x=>x.cat===cat.id);
-    h+=`<div class="mb-4 border border-gray-200 rounded-xl overflow-hidden"><div class="${cat.css} p-3 font-bold text-gray-800 text-sm flex justify-between items-center"><span>${cat.nm}</span><span id="catProg_${cat.id}" class="text-xs font-normal text-gray-600">0/${cat.id===4?5:its.length}</span>${cat.id===4?'<span id="c4selCount" class="ml-2 text-xs font-bold text-amber-600">(เลือก '+cat4Sel.size+'/2)</span>':''}</div><div class="p-4 space-y-4">`;
+    h+=`<div class="mb-4 border border-gray-200 rounded-xl overflow-hidden"><div class="${cat.css} p-3 font-bold text-gray-800 text-sm flex justify-between items-center"><span>${cat.nm}</span><span id="catProg_${cat.id}" class="text-xs font-normal text-gray-600">0/${cat.id===4?5:its.length}</span>${cat.id===4?'<span id="c4selCount" class="ml-2 text-xs font-bold text-amber-600">ระบบเลือก 2 ข้อคะแนนสูงสุดอัตโนมัติ</span>':''}</div><div class="p-4 space-y-4">`;
     its.forEach(it=>{
       const k=ik(it.c),lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);
       if(!show){
@@ -1165,17 +1161,14 @@ function renderItems(){
         h+=`<div class="border-b border-gray-100 pb-2 last:border-b-0 opacity-50" id="row_${k}"><div class="flex items-center gap-2"><span class="text-indigo-600 font-bold text-sm">${it.c}</span><span class="text-gray-500 text-sm">${esc(it.n)}</span><span class="ml-auto px-2 py-0.5 bg-gray-200 text-gray-500 rounded text-xs font-bold">N/A</span></div><select id="sc_${k}" class="hidden"><option value="NA">N/A</option></select></div>`;
         return;
       }
-      h+=`<div class="border-b border-gray-100 pb-3 last:border-b-0 ${it.cat===4&&!cat4Sel.has(k)?'c4-unsel':''}" id="row_${k}">
-<div class="flex items-center gap-2 mb-2 flex-wrap"><span class="text-indigo-600 font-bold text-sm">${it.c}</span><span class="text-gray-700 text-sm">${esc(it.n)}</span>${it.cat===4?'<label class="ml-auto flex items-center gap-1.5 cursor-pointer select-none"><input type="checkbox" id="c4ck_'+k+'" '+(cat4Sel.has(k)?'checked':'')+' onchange="toggleCat4(\''+k+'\')" class="c4-ck"><span class="text-xs text-amber-700 font-bold">เลือกข้อนี้</span></label>':''}</div>
+      h+=`<div class="border-b border-gray-100 pb-3 last:border-b-0" id="row_${k}">
+<div class="flex items-center gap-2 mb-2 flex-wrap"><span class="text-indigo-600 font-bold text-sm">${it.c}</span><span class="text-gray-700 text-sm">${esc(it.n)}</span>${it.cat===4?'<span id="c4top_'+k+'" class="hidden c4-top">&#11088; TOP</span>':''}</div>
+${(it.cs&&it.cs.trim())?'<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 text-xs text-blue-800"><div class="font-bold text-blue-700 mb-1">&#9432; แนวคิด/หลักการ</div><div class="nl">'+nlbr(it.cs)+'</div></div>':''}
 <div class="flex gap-2 flex-wrap items-center mb-2">
-<button id="by_${k}" class="big-btn big-btn-yes" onclick="setScore('${k}',5)">&#10004; ทำได้ (5)</button>
-<button id="bn_${k}" class="big-btn big-btn-no" onclick="setScore('${k}',0)">&#10008; ยังไม่ได้ (0)</button>
-<button class="text-indigo-500 text-xs hover:underline" onclick="document.getElementById('fine_${k}').classList.toggle('hidden')">ปรับ 0-5 &#9662;</button>
-<span id="sv_${k}" class="text-sm font-bold text-gray-400"></span>
+${[0,1,2,3,4,5].map(lv=>`<button id="fb_${k}_${lv}" class="score-btn s${lv}" onclick="setScore('${k}',${lv})">${lv}</button>`).join('')}
+<span id="sv_${k}" class="text-sm font-bold text-gray-400 ml-2"></span>
 </div>
-<div id="fine_${k}" class="hidden flex gap-1 mb-2">${[0,1,2,3,4,5].map(lv=>`<button id="fb_${k}_${lv}" class="fine-btn" onclick="setScore('${k}',${lv})">${lv}</button>`).join('')}</div>
 <select id="sc_${k}" class="hidden"><option value="">-</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
-${(it.cs&&it.cs.trim())?'<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 text-xs text-blue-800"><div class="font-bold text-blue-700 mb-1">&#9432; แนวคิด</div><div class="nl">'+nlbr(it.cs)+'</div></div>':''}
 <div class="mt-2 space-y-0.5 pl-1 text-xs border-l-2 border-indigo-100 ml-1">${[0,1,2,3,4,5].map(lv=>`<div class="score-level" id="lv_${k}_${lv}" onclick="setScore('${k}',${lv})"><span class="font-bold text-indigo-700">${lv}:</span> <span class="text-gray-600 nl">${nlbr(it['s'+lv]||'ไม่มีข้อมูล')}</span></div>`).join('')}</div>
 </div>`;
     });
@@ -1185,17 +1178,15 @@ ${(it.cs&&it.cs.trim())?'<div class="bg-blue-50 border border-blue-200 rounded-l
 }
 
 function setScore(k,v){
-  // Block scoring for unselected Cat4 items
-  if(['4_1','4_2','4_3','4_4','4_5'].includes(k)&&!cat4Sel.has(k)){return;}
   const el=document.getElementById('sc_'+k);if(el)el.value=String(v);
   updBtnState(k,v);updLive();autoSave();
+  if(['4_1','4_2','4_3','4_4','4_5'].includes(k))updCat4Tops();
 }
 function updBtnState(k,v){
-  const by=document.getElementById('by_'+k),bn=document.getElementById('bn_'+k),sv=document.getElementById('sv_'+k);
-  if(by){by.classList.toggle('active',v===5);bn.classList.toggle('active',v===0);}
+  const sv=document.getElementById('sv_'+k);
   if(sv)sv.textContent=(v!==''&&v!==null&&v!==undefined)?v+'/5':'';
-  if(v!==''&&v!==null){sv.className='text-sm font-bold '+(v>=4?'text-emerald-600':v>=3?'text-blue-600':v>=1?'text-amber-600':'text-red-500');}
-  // Fine buttons
+  if(v!==''&&v!==null){sv.className='text-sm font-bold ml-2 '+(v>=4?'text-emerald-600':v>=3?'text-blue-600':v>=1?'text-amber-600':'text-red-500');}
+  // Score buttons
   for(let i=0;i<=5;i++){const fb=document.getElementById('fb_'+k+'_'+i);if(fb)fb.classList.toggle('active',i===v);}
   // Score level highlight
   for(let i=0;i<=5;i++){const e=document.getElementById('lv_'+k+'_'+i);if(e)e.classList.toggle('selected',i===v);}
@@ -1204,38 +1195,25 @@ function updAllBtnStates(){
   EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&el.value!==''&&el.value!=='NA')updBtnState(k,Number(el.value));});
 }
 
-// ==================== CAT4 CHOOSE-2 ====================
-function toggleCat4(k){
-  if(cat4Sel.has(k)){
-    cat4Sel.delete(k);
-    const el=document.getElementById('sc_'+k);if(el)el.value='0';
-    updBtnState(k,0);
-  }else{
-    if(cat4Sel.size>=2){alert('สามารถเลือกได้สูงสุด 2 ข้อเท่านั้น กรุณายกเลิกข้ออื่นก่อน');const ck=document.getElementById('c4ck_'+k);if(ck)ck.checked=false;return;}
-    cat4Sel.add(k);
-  }
-  updCat4UI();updLive();autoSave();
-}
-function updCat4UI(){
+// ==================== CAT4 AUTO TOP-2 ====================
+function updCat4Tops(){
+  const d=collectForm();
+  const c4=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
+  c4.sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
+  cat4Sel.clear();cat4Sel.add(c4[0].k);cat4Sel.add(c4[1].k);
   ['4_1','4_2','4_3','4_4','4_5'].forEach(k=>{
-    const row=document.getElementById('row_'+k);if(!row)return;
-    const ck=document.getElementById('c4ck_'+k);
-    const sel=cat4Sel.has(k);
-    if(ck)ck.checked=sel;
-    row.classList.toggle('c4-unsel',!sel);
+    const badge=document.getElementById('c4top_'+k);
+    if(badge){badge.classList.toggle('hidden',!cat4Sel.has(k));}
   });
-  const cnt=document.getElementById('c4selCount');if(cnt)cnt.textContent='(เลือก '+cat4Sel.size+'/2)';
+  const cnt=document.getElementById('c4selCount');
+  if(cnt){const tops=[...cat4Sel].map(k=>k.replace('_','.')).join(', ');cnt.textContent='TOP 2: ข้อ '+tops;}
 }
+function updCat4UI(){updCat4Tops();}
 function restoreCat4(data){
   cat4Sel.clear();
-  if(data&&data.cat4_selected){
-    data.cat4_selected.forEach(k=>{if(cat4Sel.size<2)cat4Sel.add(k);});
-  }else{
-    // Infer from non-zero scores
-    const c4=['4_1','4_2','4_3','4_4','4_5'];
-    const scored=c4.filter(k=>Number(data['i_'+k]||0)>0).sort((a,b)=>Number(data['i_'+b]||0)-Number(data['i_'+a]||0));
-    scored.slice(0,2).forEach(k=>cat4Sel.add(k));
-  }
+  const c4=['4_1','4_2','4_3','4_4','4_5'];
+  const scored=c4.map(k=>({k,s:Number((data&&data['i_'+k])||0)})).sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
+  scored.slice(0,2).forEach(o=>cat4Sel.add(o.k));
 }
 
 function updLive(){
@@ -1284,23 +1262,28 @@ function autoSave(){
 }
 
 async function saveAssess(){
+  try{
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์บันทึกแบบประเมิน');return;}
-  const d=collectForm(),level=CH?CH.level:'';
+  if(!CH){alert('กรุณาเลือกโรงพยาบาลก่อน');return;}
+  const d=collectForm(),level=CH.level||'';
   if(!d.date){alert('กรุณาเลือกวันที่ประเมิน');return;}
-  // Auto-select top 2 cat4 if user didn't pick (soft default: top 2 by score)
-  if(cat4Sel.size<2){
-    const c4s=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
-    c4s.sort((a,b)=>b.s-a.s);
-    cat4Sel.clear();cat4Sel.add(c4s[0].k);cat4Sel.add(c4s[1].k);
-  }
+  // Auto-select top 2 cat4 by score
+  const c4s=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
+  c4s.sort((a,b)=>b.s-a.s||(a.k<b.k?-1:1));
+  cat4Sel.clear();cat4Sel.add(c4s[0].k);cat4Sel.add(c4s[1].k);
   const cs=calcCatScores(d,level);
   const dm=calcDims(d,level);
   // Completeness check (warning only, does not block)
   let filled=0,total=0;
-  EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')filled++;});
+  EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH.level||'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')filled++;});
   if(filled<total&&!confirm('คุณกรอกเพียง '+filled+'/'+total+' ข้อ (ข้อที่ไม่กรอกจะนับเป็น 0 คะแนน) ต้องการบันทึกหรือไม่?'))return;
 
-  const payload={action:'saveScore',hospital_code:CH.code,round:d.round,date:d.date,
+  // Save locally FIRST (ensure data is never lost)
+  ls('r7_scores_'+CH.code+'_'+d.round,d);
+  lr('r7_draft_'+CH.code+'_'+d.round);
+  ls('r7_status_'+CH.code+'_'+d.round,{status:'submitted',at:new Date().toISOString(),by:CU?CU.username:'unknown'});
+
+  const payload={action:'saveScore',hospital_code:String(CH.code),round:"'"+d.round,date:d.date,
     composite:cs.wpct,grade:cs.grade,wpct:cs.wpct,
     dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
     cat4_selected:(cs.top2||[]).map(k=>k.replace('_','.')).join(','),
@@ -1315,18 +1298,17 @@ async function saveAssess(){
   const result=await pAPI(payload);
   document.getElementById('saveSpinner').classList.add('hidden');
   document.getElementById('btnSave').disabled=false;
+
+  let serverOk=true;
   if(!result.success){
-    document.getElementById('saveMsg').innerHTML='<span class="text-amber-600">บันทึกในเครื่องสำเร็จ (การส่งไปเซิร์ฟเวอร์อาจล่าช้า: '+(result.error||'')+')</span>';
+    serverOk=false;
+    document.getElementById('saveMsg').innerHTML='<span class="text-amber-600">บันทึกในเครื่องสำเร็จ (รอส่งเซิร์ฟเวอร์: '+(result.error||'')+')</span>';
     document.getElementById('saveMsg').className='mt-2 text-sm';
   }else{
     document.getElementById('saveMsg').textContent='บันทึกสำเร็จ';
     document.getElementById('saveMsg').className='mt-2 text-emerald-500 text-sm';
   }
-  // Save locally
-  ls('r7_scores_'+CH.code+'_'+d.round,d);
-  lr('r7_draft_'+CH.code+'_'+d.round);
-  // Mark as submitted
-  ls('r7_status_'+CH.code+'_'+d.round,{status:'submitted',at:new Date().toISOString(),by:CU?CU.username:'unknown'});
+
   // Add/update score in local AS array so dashboard shows it immediately
   const newEntry={hospital_code:String(CH.code),round:d.round,date:d.date,total_raw:cs.totalRaw,total_max:cs.totalMax,wpct:cs.wpct,grade:cs.grade,
     dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
@@ -1335,12 +1317,35 @@ async function saveAssess(){
   if(existIdx>=0)AS[existIdx]=newEntry;else AS.push(newEntry);
   // Also try refreshing from server (non-blocking)
   gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){const hist=processHistorical();AS=sr.scores.concat(hist);}}).catch(()=>{});
-  showReport(d,cs,dm);
+  showReport(d,cs,dm,serverOk);
+  }catch(err){
+    console.error('saveAssess error:',err);
+    const sp=document.getElementById('saveSpinner');if(sp)sp.classList.add('hidden');
+    const btn=document.getElementById('btnSave');if(btn)btn.disabled=false;
+    const msg=document.getElementById('saveMsg');
+    if(msg){msg.innerHTML='<span class="text-red-600">เกิดข้อผิดพลาด: '+esc(err.message||'ไม่ทราบสาเหตุ')+'</span>';msg.className='mt-2 text-sm';}
+    alert('บันทึกไม่สำเร็จ: '+(err.message||'กรุณาลองใหม่อีกครั้ง'));
+  }
 }
 
 // ==================== REPORT ====================
-function showReport(d,cs,dm){
+function showReport(d,cs,dm,serverOk){
   _rptD=d;_rptDm=dm;_rptCat=cs;
+  // Save confirmation toast
+  const toast=document.getElementById('rSaveToast');
+  if(serverOk!==undefined&&toast){
+    const now=new Date().toLocaleString('th-TH');
+    const hName=CH?CH.name:'';
+    if(serverOk){
+      toast.className='mb-4 rounded-xl p-4 border text-sm fade-in bg-emerald-50 border-emerald-300 text-emerald-800';
+      toast.innerHTML='<div class="font-bold mb-1">&#10004; บันทึกสำเร็จ</div><div>'+esc(hName)+' | รอบ '+esc(d.round)+' | คะแนน '+cs.wpct.toFixed(1)+'% ('+gradeText(cs.grade)+') | '+now+'</div>';
+    }else{
+      toast.className='mb-4 rounded-xl p-4 border text-sm fade-in bg-amber-50 border-amber-300 text-amber-800';
+      toast.innerHTML='<div class="font-bold mb-1">&#9888; บันทึกในเครื่องสำเร็จ (รอส่งเซิร์ฟเวอร์)</div><div>'+esc(hName)+' | รอบ '+esc(d.round)+' | คะแนน '+cs.wpct.toFixed(1)+'% ('+gradeText(cs.grade)+') | '+now+'</div>';
+    }
+    toast.classList.remove('hidden');
+    setTimeout(()=>{toast.classList.add('hidden');},15000);
+  }else if(toast){toast.classList.add('hidden');}
   document.getElementById('rSub').textContent=(CH?CH.name:'')+' — รอบ '+d.round;
   document.getElementById('rComp').textContent=cs.wpct.toFixed(1);
   document.getElementById('rRaw').textContent='(คะแนนดิบ '+cs.totalRaw+'/'+cs.totalMax+')';
