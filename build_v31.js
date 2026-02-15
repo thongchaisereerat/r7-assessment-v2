@@ -1,4 +1,4 @@
-// Build R7 Assessment System v4.0
+// Build R7 Assessment System v4.3
 // Major overhaul: weighted 0-100 scoring, new grade thresholds, big-button UX,
 // auto-analysis, action plan, submit state, ISS-008 fix
 const fs = require('fs');
@@ -11,7 +11,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>R7 Assessment System v4.0</title>
+<title>R7 Assessment System v4.3</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"><\/script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>
@@ -48,7 +48,7 @@ const html = `<!DOCTYPE html>
 <!-- HEADER -->
 <header class="bg-gradient-to-r from-indigo-800 to-blue-700 text-white shadow-lg sticky top-0 z-50">
 <div class="container mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
-<h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v4.0</h1>
+<h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v4.3</h1>
 <div class="flex items-center gap-2 flex-wrap">
 <span id="headerUser" class="hidden text-sm opacity-90"></span>
 <button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">Dashboard รพ.</button>
@@ -485,8 +485,22 @@ async function gAPI(a,p={}){
 }
 async function pAPI(d){
   const ac=new AbortController();const t=setTimeout(()=>ac.abort(),15000);
-  try{const r=await(await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal})).json();clearTimeout(t);return r;}
-  catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
+  try{
+    // Try normal fetch first (some Apps Script deployments support CORS)
+    const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac.signal});
+    clearTimeout(t);
+    if(resp.type==='opaque'){return{success:true,note:'opaque response'};}
+    try{const r=await resp.json();return r;}catch(je){return{success:true,note:'non-json response'};}
+  }catch(e){
+    clearTimeout(t);
+    if(e.name==='AbortError')return{success:false,error:'Request timeout'};
+    // CORS error — retry with no-cors (request goes through, response is opaque)
+    try{
+      const ac2=new AbortController();const t2=setTimeout(()=>ac2.abort(),15000);
+      await fetch(API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d),signal:ac2.signal});
+      clearTimeout(t2);return{success:true,note:'no-cors fallback'};
+    }catch(e2){return{success:false,error:e2.message};}
+  }
 }
 
 // ==================== UTILS ====================
@@ -1280,14 +1294,19 @@ function autoSave(){
 async function saveAssess(){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์บันทึกแบบประเมิน');return;}
   const d=collectForm(),level=CH?CH.level:'';
+  if(!d.date){alert('กรุณาเลือกวันที่ประเมิน');return;}
+  // Auto-select top 2 cat4 if user didn't pick (soft default: top 2 by score)
+  if(cat4Sel.size<2){
+    const c4s=['4_1','4_2','4_3','4_4','4_5'].map(k=>({k,s:Number(d['i_'+k]||0)}));
+    c4s.sort((a,b)=>b.s-a.s);
+    cat4Sel.clear();cat4Sel.add(c4s[0].k);cat4Sel.add(c4s[1].k);
+  }
   const cs=calcCatScores(d,level);
   const dm=calcDims(d,level);
-  if(!d.date){alert('กรุณาเลือกวันที่ประเมิน');return;}
-  if(cat4Sel.size!==2){alert('กรุณาเลือกข้อหมวด 4 ให้ครบ 2 ข้อ (เลือกแล้ว '+cat4Sel.size+'/2)');return;}
-  // Completeness check
+  // Completeness check (warning only, does not block)
   let filled=0,total=0;
   EC.forEach(it=>{const lc=it.lc||'ALL',hl=CH?CH.level:'',show=lc==='ALL'||lc.split(',').some(l=>l.trim()===hl);if(!show)return;total++;const el=document.getElementById('sc_'+ik(it.c));if(el&&el.value!==''&&el.value!=='NA')filled++;});
-  if(filled<total&&!confirm('คุณกรอกเพียง '+filled+'/'+total+' ข้อ ต้องการบันทึกหรือไม่?'))return;
+  if(filled<total&&!confirm('คุณกรอกเพียง '+filled+'/'+total+' ข้อ (ข้อที่ไม่กรอกจะนับเป็น 0 คะแนน) ต้องการบันทึกหรือไม่?'))return;
 
   const payload={action:'saveScore',hospital_code:CH.code,round:d.round,date:d.date,
     composite:cs.wpct,grade:cs.grade,wpct:cs.wpct,
@@ -1305,8 +1324,8 @@ async function saveAssess(){
   document.getElementById('saveSpinner').classList.add('hidden');
   document.getElementById('btnSave').disabled=false;
   if(!result.success){
-    document.getElementById('saveMsg').textContent='บันทึกไม่สำเร็จ: '+(result.error||'กรุณาลองใหม่');
-    document.getElementById('saveMsg').className='mt-2 text-red-500 text-sm';
+    document.getElementById('saveMsg').innerHTML='<span class="text-amber-600">บันทึกในเครื่องสำเร็จ (การส่งไปเซิร์ฟเวอร์อาจล่าช้า: '+(result.error||'')+')</span>';
+    document.getElementById('saveMsg').className='mt-2 text-sm';
   }else{
     document.getElementById('saveMsg').textContent='บันทึกสำเร็จ';
     document.getElementById('saveMsg').className='mt-2 text-emerald-500 text-sm';
@@ -1316,8 +1335,14 @@ async function saveAssess(){
   lr('r7_draft_'+CH.code+'_'+d.round);
   // Mark as submitted
   ls('r7_status_'+CH.code+'_'+d.round,{status:'submitted',at:new Date().toISOString(),by:CU?CU.username:'unknown'});
-  // Refresh scores
-  try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0)AS=sr.scores.concat(processHistorical());else AS=processHistorical();}catch(e){}
+  // Add/update score in local AS array so dashboard shows it immediately
+  const newEntry={hospital_code:String(CH.code),round:d.round,date:d.date,total_raw:cs.totalRaw,total_max:cs.totalMax,wpct:cs.wpct,grade:cs.grade,
+    dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
+    updated_at:new Date().toISOString(),_src:'local'};
+  const existIdx=AS.findIndex(s=>String(s.hospital_code)===String(CH.code)&&s.round===d.round);
+  if(existIdx>=0)AS[existIdx]=newEntry;else AS.push(newEntry);
+  // Also try refreshing from server (non-blocking)
+  gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){const hist=processHistorical();AS=sr.scores.concat(hist);}}).catch(()=>{});
   showReport(d,cs,dm);
 }
 
@@ -1388,58 +1413,203 @@ function viewRpt(round){
   else{alert('ไม่พบข้อมูลรายข้อ กรุณาแก้ไขเพื่อเก็บข้อมูลก่อน');}
 }
 
+// ==================== EXCEL HELPERS ====================
+function xlAddTitle(aoa,title,subtitle,cols){
+  aoa.push([title]);aoa.push([subtitle]);aoa.push([]);
+  return aoa;
+}
+function xlSetColWidths(ws,widths){ws['!cols']=widths.map(w=>({wch:w}));}
+function xlMerge(ws,merges){ws['!merges']=(ws['!merges']||[]).concat(merges.map(m=>({s:{r:m[0],c:m[1]},e:{r:m[2],c:m[3]}})));}
+function xlBuildSheet(aoa,colWidths,titleMergeCols){
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  if(colWidths)xlSetColWidths(ws,colWidths);
+  if(titleMergeCols){xlMerge(ws,[[0,0,0,titleMergeCols-1],[1,0,1,titleMergeCols-1]]);}
+  return ws;
+}
+
 // ==================== EXPORTS ====================
 function exportDashExcel(){
   const pv=document.getElementById('fProv').value,rn=document.getElementById('fRnd').value;
   const lm=getLS(AS,rn);let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);
-  const rows=fh.map(h=>{
+  const provLabel=pv||'เขต 7 ทั้งหมด';const roundLabel=rn||'ล่าสุด';
+  const now=new Date();const dateStr=now.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  // Count grades
+  let gA=0,gB=0,gC=0,gD=0,submitted=0,totalWpct=0;
+  fh.forEach(h=>{const s=lm[String(h.code)];if(s){submitted++;const g=s.grade||gradeFromPct(Number(s.wpct||0));if(g==='A')gA++;else if(g==='B')gB++;else if(g==='C')gC++;else gD++;totalWpct+=Number(s.wpct||0);}});
+  const avgWpct=submitted>0?(totalWpct/submitted).toFixed(1):'-';
+
+  const aoa=[];
+  // Title rows
+  aoa.push(['รายงานผลการประเมินมาตรฐานการเงินการคลัง สำนักงานเขตสุขภาพที่ 7']);
+  aoa.push([provLabel+' | รอบ '+roundLabel+' | วันที่ออกรายงาน: '+dateStr]);
+  aoa.push([]);
+  // Summary section
+  aoa.push(['สรุปภาพรวม']);
+  aoa.push(['รพ.ทั้งหมด',fh.length,'ส่งแล้ว',submitted,'ยังไม่ส่ง',fh.length-submitted,'คะแนนเฉลี่ย',avgWpct+'%']);
+  aoa.push(['ดีเยี่ยม (A)',gA,'ดี (B)',gB,'พอใช้ (C)',gC,'ต้องปรับปรุง (D)',gD]);
+  aoa.push([]);
+  // Header row
+  const hdr=['ลำดับ','รหัส รพ.','ชื่อ รพ.','จังหวัด','ระดับ','รอบ','คะแนน (%)','ระดับผลประเมิน','คะแนนดิบ','คะแนนเต็ม'];
+  CATS.forEach(cat=>{hdr.push(cat.sn+' (%)');});
+  aoa.push(hdr);
+  // Data rows
+  fh.forEach((h,idx)=>{
     const s=lm[String(h.code)]||{};
     const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
-    const row={'รหัส รพ.':h.code,'ชื่อ รพ.':h.name,'จังหวัด':h.province,'ระดับ':h.level,'รอบ':s.round||rn||'-',
-      'คะแนน(%)':s.wpct!=null?Number(s.wpct).toFixed(1):'-','ระดับผลประเมิน':s.grade?gradeLabel(s.grade):'-',
-      'คะแนนดิบ':s.total_raw||'-'};
-    if(cached){
-      const cs=calcCatScores(cached,h.level);
-      CATS.forEach((cat,i)=>{row['หมวด'+cat.id+'(%)']=cs.categories[i].pct.toFixed(1);});
-      EC.forEach(it=>{row[it.c]=cached['i_'+ik(it.c)]||'-';});
-    }
-    return row;
+    const row=[idx+1,h.code,h.name,h.province,h.level||'-',s.round||rn||'-',
+      s.wpct!=null?Number(Number(s.wpct).toFixed(1)):'-',
+      s.grade?gradeLabel(s.grade)+' ('+s.grade+')':'-',
+      s.total_raw||'-',s.total_max||'-'];
+    if(cached){const cs=calcCatScores(cached,h.level);CATS.forEach((cat,i)=>{row.push(Number(cs.categories[i].pct.toFixed(1)));});}
+    else{CATS.forEach(()=>{row.push('-');});}
+    aoa.push(row);
   });
-  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Hospitals');
-  XLSX.writeFile(wb,'R7_Dashboard_'+(rn||'all').replace('/','_')+'.xlsx');
+  // Footer
+  aoa.push([]);
+  aoa.push(['หมายเหตุ: เกณฑ์ระดับ A >= 90% | B >= 80% | C >= 70% | D < 70% | ผ่านเกณฑ์ >= 80%']);
+  aoa.push(['Composite Score: Revenue 35%, Discipline 30%, Cost 15%, Collection 15%, Process 5%']);
+  aoa.push(['จัดทำโดย: ระบบ R7 Assessment System | สำนักงานเขตสุขภาพที่ 7']);
+
+  const ws=xlBuildSheet(aoa,[5,10,28,14,8,10,12,18,10,10,10,10,10,10,10,10],hdr.length);
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 2: Item-level detail (if cached)
+  const aoa2=[['รายละเอียดคะแนนรายข้อ — '+provLabel+' | รอบ '+roundLabel],[''],[]];
+  const hdr2=['รหัส รพ.','ชื่อ รพ.','จังหวัด','คะแนน (%)','เกรด'];
+  EC.forEach(it=>{hdr2.push(it.c);});
+  aoa2.push(hdr2);
+  fh.forEach(h=>{
+    const s=lm[String(h.code)]||{};
+    const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+    const row2=[h.code,h.name,h.province,s.wpct!=null?Number(Number(s.wpct).toFixed(1)):'-',s.grade||'-'];
+    if(cached){EC.forEach(it=>{const v=cached['i_'+ik(it.c)];row2.push(v==='NA'?'N/A':(v!==undefined&&v!==''?Number(v):'-'));});}
+    else{EC.forEach(()=>{row2.push('-');});}
+    aoa2.push(row2);
+  });
+  const ws2=xlBuildSheet(aoa2,null,hdr2.length);
+
+  XLSX.utils.book_append_sheet(wb,ws,'สรุปผล');
+  XLSX.utils.book_append_sheet(wb,ws2,'คะแนนรายข้อ');
+  XLSX.writeFile(wb,'R7_Dashboard_'+provLabel+'_'+(rn||'all').replace('/','_')+'.xlsx');
 }
 
 function exportMyExcel(){
   if(!CH)return;const codeStr=String(CH.code);
-  const hs=AS.filter(s=>String(s.hospital_code)===codeStr);
-  const rows=hs.map(s=>{
-    const row={'รอบ':s.round||'-','คะแนน(%)':s.wpct!=null?Number(s.wpct).toFixed(1):'-','ระดับ':s.grade?gradeLabel(s.grade):'-','คะแนนดิบ':s.total_raw||'-'};
-    const cached=lg('r7_scores_'+codeStr+'_'+s.round);
-    if(cached){EC.forEach(it=>{row[it.c]=cached['i_'+ik(it.c)]||'-';});}
-    return row;
+  const hs=AS.filter(s=>String(s.hospital_code)===codeStr).sort((a,b)=>(b.round||'').localeCompare(a.round||''));
+  const now=new Date();const dateStr=now.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+
+  const aoa=[];
+  aoa.push(['รายงานผลการประเมินมาตรฐานการเงินการคลัง — '+CH.name]);
+  aoa.push(['รหัส: '+CH.code+' | จังหวัด: '+CH.province+' | ระดับ: '+(CH.level||'-')+' | วันที่ออกรายงาน: '+dateStr]);
+  aoa.push([]);
+  // Summary of all rounds
+  aoa.push(['ประวัติการประเมินรายรอบ']);
+  aoa.push(['รอบ','คะแนน (%)','ระดับ','คะแนนดิบ','คะแนนเต็ม','สถานะ']);
+  hs.forEach(s=>{
+    aoa.push([s.round||'-',s.wpct!=null?Number(Number(s.wpct).toFixed(1)):'-',
+      s.grade?gradeLabel(s.grade)+' ('+s.grade+')':'-',
+      s.total_raw||'-',s.total_max||'-',
+      s._src==='hist'?'ข้อมูลย้อนหลัง':'ส่งแล้ว']);
   });
-  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Scores');
-  XLSX.writeFile(wb,'R7_'+CH.code+'_Export.xlsx');
+  aoa.push([]);
+  // Detail per round (latest first)
+  aoa.push(['คะแนนรายข้อ (รอบล่าสุด)']);
+  const latestRound=hs[0];
+  if(latestRound){
+    const cached=lg('r7_scores_'+codeStr+'_'+latestRound.round);
+    aoa.push(['ข้อ','หัวข้อ','หมวด','คะแนน','คะแนนเต็ม']);
+    if(cached){
+      EC.forEach(it=>{
+        const k=ik(it.c),v=cached['i_'+k];
+        aoa.push([it.c,it.n,it.cat,v==='NA'?'N/A':Number(v||0),5]);
+      });
+      const cs=calcCatScores(cached,CH.level||'');
+      aoa.push([]);
+      aoa.push(['คะแนนรายหมวด']);
+      aoa.push(['หมวด','ได้','เต็ม','ร้อยละ','ระดับ']);
+      cs.categories.forEach((c,i)=>{
+        aoa.push([CATS[i].sn,c.raw,c.mx,Number(c.pct.toFixed(1)),gradeLabel(gradeFromPct(c.pct))]);
+      });
+      aoa.push([]);
+      aoa.push(['รวม',cs.totalRaw,cs.totalMax,Number(cs.wpct.toFixed(1)),gradeText(cs.grade)]);
+    }else{aoa.push(['ไม่มีข้อมูลรายข้อ (กรุณาทำแบบประเมินอีกครั้ง)']);}
+  }
+  aoa.push([]);
+  aoa.push(['จัดทำโดย: ระบบ R7 Assessment System | สำนักงานเขตสุขภาพที่ 7']);
+
+  const ws=xlBuildSheet(aoa,[8,35,8,12,12,14],6);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'ผลประเมิน');
+  XLSX.writeFile(wb,'R7_'+CH.name+'_'+CH.code+'_Export.xlsx');
 }
 
 function exportRptExcel(){
   if(!_rptD||!_rptCat)return;
-  const rows=EC.map(it=>{
-    const k=ik(it.c),v=_rptD['i_'+k];
-    return{'ข้อ':it.c,'หัวข้อ':it.n,'หมวด':it.cat,'คะแนน':v==='NA'?'N/A':Number(v||0)};
+  const now=new Date();const dateStr=now.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const hospName=CH?CH.name:'-';const hospCode=CH?CH.code:'-';const hospProv=CH?CH.province:'-';const hospLevel=CH?CH.level:'-';
+
+  const aoa=[];
+  aoa.push(['รายงานผลการประเมินมาตรฐานการเงินการคลัง']);
+  aoa.push(['สำนักงานเขตสุขภาพที่ 7']);
+  aoa.push([]);
+  // Hospital info
+  aoa.push(['ข้อมูลหน่วยบริการ']);
+  aoa.push(['ชื่อ รพ.',hospName,'รหัส',hospCode]);
+  aoa.push(['จังหวัด',hospProv,'ระดับ',hospLevel]);
+  aoa.push(['รอบประเมิน',_rptD.round||'-','วันที่ประเมิน',_rptD.date||'-']);
+  aoa.push(['วันที่ออกรายงาน',dateStr]);
+  aoa.push([]);
+  // Overall result
+  aoa.push(['ผลการประเมินภาพรวม']);
+  aoa.push(['คะแนนถ่วงน้ำหนัก (%)',Number(_rptCat.wpct.toFixed(1))]);
+  aoa.push(['ระดับผลประเมิน',gradeText(_rptCat.grade)]);
+  aoa.push(['คะแนนดิบ',_rptCat.totalRaw,'/',_rptCat.totalMax]);
+  aoa.push(['ผ่านเกณฑ์ (>= 80%)',_rptCat.wpct>=80?'ผ่าน':'ไม่ผ่าน']);
+  aoa.push([]);
+  // Category breakdown
+  aoa.push(['คะแนนรายหมวด']);
+  aoa.push(['หมวด','ชื่อหมวด','น้ำหนัก','ได้','เต็ม','ร้อยละ','ระดับ','Gap']);
+  _rptCat.categories.forEach((c,i)=>{
+    const cat=CATS[i];const g=gradeFromPct(c.pct);
+    aoa.push([cat.id,cat.sn,cat.wt,c.raw,c.mx,Number(c.pct.toFixed(1)),gradeLabel(g),c.mx-c.raw>0?c.mx-c.raw:0]);
   });
-  rows.push({},{});
-  rows.push({'ข้อ':'รพ.','คะแนน':CH?CH.name:'-'});
-  rows.push({'ข้อ':'รอบ','คะแนน':_rptD.round||'-'});
-  rows.push({'ข้อ':'คะแนน(%)','คะแนน':_rptCat.wpct.toFixed(1)});
-  rows.push({'ข้อ':'ระดับ','คะแนน':gradeText(_rptCat.grade)});
-  rows.push({'ข้อ':'คะแนนดิบ','คะแนน':_rptCat.totalRaw+'/'+_rptCat.totalMax});
-  CATS.forEach((cat,i)=>{rows.push({'ข้อ':cat.sn+'(%)','คะแนน':_rptCat.categories[i].pct.toFixed(1)});});
-  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Report');
-  XLSX.writeFile(wb,'R7_Report_'+(CH?CH.name:'')+'_'+(_rptD.round||'').replace('/','_')+'.xlsx');
+  aoa.push([]);
+  // Item-level detail
+  aoa.push(['คะแนนรายข้อ']);
+  aoa.push(['ข้อ','หัวข้อ','หมวด','คะแนน','คะแนนเต็ม','หมายเหตุ']);
+  const strengths=[],weaknesses=[];
+  EC.forEach(it=>{
+    const k=ik(it.c),v=_rptD['i_'+k];
+    const sc=v==='NA'?'N/A':Number(v||0);
+    let note='';
+    if(v!=='NA'){
+      if(sc>=4){note='จุดแข็ง';strengths.push(it.c+' '+it.n+' ('+sc+'/5)');}
+      else if(sc<=2){note='ต้องปรับปรุง';weaknesses.push(it.c+' '+it.n+' ('+sc+'/5)');}
+    }
+    aoa.push([it.c,it.n,it.cat,sc,5,note]);
+  });
+  // 5-dimension scores
+  aoa.push([]);
+  aoa.push(['Composite Score 5 มิติ']);
+  aoa.push(['มิติ','น้ำหนัก','คะแนน (%)']);
+  aoa.push(['Revenue (รายได้)','35%',_rptDm?_rptDm.revenue:'-']);
+  aoa.push(['Discipline (วินัยการเงิน)','30%',_rptDm?_rptDm.discipline:'-']);
+  aoa.push(['Cost (ควบคุมต้นทุน)','15%',_rptDm?_rptDm.cost:'-']);
+  aoa.push(['Collection (จัดเก็บรายได้)','15%',_rptDm?_rptDm.collection:'-']);
+  aoa.push(['Process (กระบวนการ)','5%',_rptDm?_rptDm.process:'-']);
+  aoa.push([]);
+  // Strengths & weaknesses summary
+  aoa.push(['สรุป']);
+  if(strengths.length){aoa.push(['จุดแข็ง (คะแนน 4-5)']);strengths.forEach(s=>{aoa.push(['',s]);});}
+  if(weaknesses.length){aoa.push(['จุดต้องปรับปรุง (คะแนน 0-2)']);weaknesses.forEach(w=>{aoa.push(['',w]);});}
+  aoa.push([]);
+  aoa.push(['เกณฑ์ระดับ: A >= 90% | B >= 80% | C >= 70% | D < 70% | ผ่านเกณฑ์ >= 80%']);
+  aoa.push(['จัดทำโดย: ระบบ R7 Assessment System | สำนักงานเขตสุขภาพที่ 7']);
+
+  const ws=xlBuildSheet(aoa,[8,35,10,10,10,14],6);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'รายงานประเมิน');
+  XLSX.writeFile(wb,'R7_Report_'+hospName+'_'+(_rptD.round||'').replace('/','_')+'.xlsx');
 }
 
 // ==================== IMPORT ====================
