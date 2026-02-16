@@ -1140,7 +1140,7 @@ function checkDraft(code){
 }
 
 // ==================== ASSESSMENT ====================
-function startOrResume(){
+async function startOrResume(){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์ทำแบบประเมิน');return;}
   const now=new Date();const by=now.getFullYear()+543;
   const cr=(now.getMonth()<6?'1/':'2/')+by;
@@ -1151,7 +1151,7 @@ function startOrResume(){
     const existInAS=AS.find(s=>String(s.hospital_code)===String(CH.code)&&s.round===cr);
     if((st&&st.status==='submitted')||saved||existInAS){
       const choice=confirm('รอบ '+cr+' มีการประเมินแล้ว\\n\\n• กด ตกลง = แก้ไขข้อมูลเดิม (โหลดคะแนนที่บันทึกไว้)\\n• กด ยกเลิก = ไม่ทำอะไร');
-      if(choice){editAssess(cr);return;}
+      if(choice){await editAssess(cr);return;}
       else return;
     }
   }
