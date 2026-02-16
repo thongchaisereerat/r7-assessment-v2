@@ -1150,7 +1150,7 @@ function startOrResume(){
     const saved=lg('r7_scores_'+CH.code+'_'+cr);
     const existInAS=AS.find(s=>String(s.hospital_code)===String(CH.code)&&s.round===cr);
     if((st&&st.status==='submitted')||saved||existInAS){
-      const choice=confirm('รอบ '+cr+' มีการประเมินแล้ว\n\n• กด "ตกลง" → แก้ไขข้อมูลเดิม (โหลดคะแนนที่บันทึกไว้)\n• กด "ยกเลิก" → ยกเลิก');
+      const choice=confirm('รอบ '+cr+' มีการประเมินแล้ว\\n\\n• กด ตกลง = แก้ไขข้อมูลเดิม (โหลดคะแนนที่บันทึกไว้)\\n• กด ยกเลิก = ไม่ทำอะไร');
       if(choice){editAssess(cr);return;}
       else return;
     }
