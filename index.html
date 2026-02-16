@@ -465,7 +465,7 @@ function showPage(id){
     const fp=document.getElementById('fProv');if(fp&&CU.province){fp.value=CU.province;refreshDash();}
   }
   if(id==='pageDashboard')refreshDash();
-  if(id==='pageMyDashboard'&&CH){loadMyDash(CH.code);}
+  if(id==='pageMyDashboard'&&CH){showLoad('กำลังโหลดข้อมูล...');loadMyDash(CH.code).then(()=>hideLoad()).catch(()=>hideLoad());}
   window.scrollTo(0,0);
 }
 
@@ -1033,11 +1033,16 @@ async function loadMyDash(code){
 
   let sc=[];
   const sr=await gAPI('getScores',{hospital_code:codeStr});
-  if(sr.success&&sr.scores&&sr.scores.length>0)sc=sr.scores;
+  if(sr.success&&sr.scores&&sr.scores.length>0)sc=sr.scores.map(s=>{s.round=normRound(s.round);if(s.wpct===undefined&&s.composite!==undefined)s.wpct=Number(s.composite)||0;return s;});
+  // Merge: historical AS + server scores + localStorage cached scores
   const histForHosp=AS.filter(s=>String(s.hospital_code)===codeStr);
   const roundMap={};
-  histForHosp.forEach(s=>roundMap[s.round]=s);sc.forEach(s=>roundMap[s.round]=s);
-  const sorted=Object.values(roundMap).sort((a,b)=>(b.updated_at||b.round||'').localeCompare(a.updated_at||a.round||''));
+  histForHosp.forEach(s=>{s.round=normRound(s.round);roundMap[s.round]=s;});
+  sc.forEach(s=>roundMap[s.round]=s);
+  // Also check localStorage for any locally-saved rounds not yet in server
+  const now=new Date();const by=now.getFullYear()+543;
+  for(let y=by-2;y<=by+1;y++){[1,2].forEach(r=>{const rk=r+'/'+y;const ld=lg('r7_scores_'+codeStr+'_'+rk);if(ld&&!roundMap[rk]){const cs=calcCatScores(ld,CH.level||'');roundMap[rk]={hospital_code:codeStr,round:rk,wpct:cs.wpct,grade:cs.grade,total_raw:cs.totalRaw,updated_at:ld.date||'',_src:'local'};}});}
+  const sorted=Object.values(roundMap).sort((a,b)=>{const[ra,ya]=(a.round||'').split('/').map(Number);const[rb,yb]=(b.round||'').split('/').map(Number);return yb!==ya?yb-ya:rb-ra;});
   const la=sorted[0];
 
   if(la){
@@ -1072,13 +1077,17 @@ async function loadMyDash(code){
     btnEl.innerHTML='<button onclick="startOrResume()" data-testid="btn-start-assess" class="bg-indigo-600 hover:bg-indigo-700 text-white py-4 px-10 rounded-xl font-bold text-lg transition shadow-md hover:shadow-lg">เริ่มการประเมิน</button>';
   }
 
-  // History table with submit status
+  // History table with delta comparison
   if(sorted.length>0){
-    document.getElementById('mHist').innerHTML=`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">ระดับ</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-center">จัดการ</th></tr></thead><tbody>${sorted.map(s=>{
+    document.getElementById('mHist').innerHTML=`<table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">Δ</th><th class="p-2 text-center">ระดับ</th><th class="p-2 text-center">ผ่าน</th><th class="p-2 text-center">สถานะ</th><th class="p-2 text-center">จัดการ</th></tr></thead><tbody>${sorted.map((s,idx)=>{
       const st=lg('r7_status_'+codeStr+'_'+s.round);
       const isSubmitted=(st&&st.status==='submitted')||s._src==='hist'||!st;
       const wp=s.wpct!=null?Number(s.wpct).toFixed(1):'-';
-      return `<tr class="border-b border-gray-50"><td class="p-2">${s.round||'-'}</td><td class="p-2 text-center font-bold">${wp}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${gradeClass(s.grade)}">${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center">${isSubmitted?'<button onclick="viewRpt(\''+s.round+'\')  " class="text-emerald-600 hover:underline text-xs">รายงาน</button>':'<button onclick="editAssess(\''+s.round+'\' )" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button>'}</td></tr>`;
+      const prevWp=idx<sorted.length-1?Number(sorted[idx+1].wpct||0):null;
+      const delta=(wp!=='-'&&prevWp!==null)?Number((Number(wp)-prevWp).toFixed(1)):null;
+      const deltaStr=delta!==null?(delta>0?'<span class="text-emerald-600 font-bold">↑+'+delta+'</span>':delta<0?'<span class="text-red-600 font-bold">↓'+delta+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">—</span>';
+      const pass=wp!=='-'&&Number(wp)>=80?'<span class="text-emerald-600">✔</span>':'<span class="text-red-500">✘</span>';
+      return `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="p-2 font-medium">${s.round||'-'}</td><td class="p-2 text-center font-bold">${wp}</td><td class="p-2 text-center">${deltaStr}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${gradeClass(s.grade)}">${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">${pass}</td><td class="p-2 text-center">${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center">${isSubmitted?'<button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs">รายงาน</button>':'<button onclick="editAssess(\''+s.round+'\')" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button>'}</td></tr>`;
     }).join('')}</tbody></table>`;
   }else{document.getElementById('mHist').innerHTML='<p class="text-gray-400 text-xs">ยังไม่มีประวัติ</p>';}
 
