@@ -190,6 +190,11 @@ const html = `<!DOCTYPE html>
 <div id="dAnalysis" data-testid="analysis-section" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"></div>
 </div>
 </div>
+<!-- Scorecard: ตารางคะแนนรายข้อ -->
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+<h4 class="font-bold text-gray-700 mb-3 text-sm">&#128203; ตารางคะแนนรายข้อ (ภาพรวม)</h4>
+<div id="dScorecard"></div>
+</div>
 <!-- Historical trend + interpretation -->
 <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
 <h4 class="font-bold text-gray-700 mb-3 text-sm">&#128202; ข้อมูลย้อนหลังรายรอบประเมิน</h4>
@@ -235,6 +240,11 @@ const html = `<!DOCTYPE html>
 </div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">ประวัติการประเมิน</h4><div id="mHist" class="text-gray-500 text-sm">-</div></div>
 </div>
+</div>
+<!-- Scorecard: ตารางคะแนนรายข้อ (My Dashboard) -->
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+<h4 class="font-bold text-gray-700 mb-3 text-sm">&#128203; ตารางคะแนนรายข้อ (ภาพรวม)</h4>
+<div id="mScorecard"></div>
 </div>
 </div>
 
@@ -413,6 +423,147 @@ function renderAnalysisHTML(an){
   h+='<div class="bg-red-50 border border-red-200 rounded-lg p-3"><div class="text-red-600 font-bold text-xs mb-1">จุดต้องพัฒนาเร่งด่วน</div><div class="text-sm font-bold">'+(u?u.sn:'—')+'</div><div class="text-xs text-gray-600">'+(an.urgent?an.urgent.pct.toFixed(1)+'%':'—')+'</div></div>';
   h+='<div class="bg-amber-50 border border-amber-200 rounded-lg p-3"><div class="text-amber-600 font-bold text-xs mb-1">ลำดับรอง</div><div class="text-sm font-bold">'+(s?s.sn:'—')+'</div><div class="text-xs text-gray-600">'+(an.secondary?an.secondary.pct.toFixed(1)+'%':'—')+'</div></div>';
   h+='<div class="bg-blue-50 border border-blue-200 rounded-lg p-3"><div class="text-blue-600 font-bold text-xs mb-1">คะแนนเฉลี่ยต่อข้อ</div><div class="text-sm font-bold">'+an.avgPerItem+'</div><div class="text-xs text-gray-600">จาก 5.00</div></div>';
+  h+='</div>';
+  return h;
+}
+
+// ==================== SCORECARD (ภาพรวมคะแนนรายข้อ) ====================
+function renderScorecard(d,level){
+  if(!d)return'<p class="text-gray-400 text-xs">ไม่มีข้อมูลรายข้อ</p>';
+  const cs=calcCatScores(d,level);
+  const lv64=level&&['M1','M2','A'].includes(level);
+  function scoreBg(v){v=Number(v);if(v===0)return'bg-red-100 text-red-700';if(v<=2)return'bg-orange-100 text-orange-700';if(v===3)return'bg-yellow-100 text-yellow-700';if(v===4)return'bg-emerald-100 text-emerald-700';return'bg-emerald-200 text-emerald-800';}
+  function gradeBg(g){return g==='A'?'bg-emerald-600 text-white':g==='B'?'bg-blue-600 text-white':g==='C'?'bg-amber-500 text-white':'bg-red-600 text-white';}
+  // Build per-category item layout matching Excel ภาพรวม
+  const catData=[];
+  CATS.forEach((cat,ci)=>{
+    const its=EC.filter(x=>x.cat===cat.id);
+    const catResult=cs.categories[ci];
+    const items=its.map(it=>{
+      const k=ik(it.c);const v=Number(d['i_'+k]||0);
+      const isNA=(it.c==='6.4'&&!lv64);
+      const isTop2=(cat.id===4&&cs.top2&&cs.top2.includes(k));
+      return{code:it.c,k,v,isNA,isTop2,name:it.n};
+    });
+    catData.push({cat,catResult,items});
+  });
+  let h='<div class="overflow-x-auto">';
+  // --- Item-level scorecard ---
+  h+='<table class="w-full text-xs border-collapse border border-gray-300">';
+  catData.forEach(({cat,catResult,items})=>{
+    const nItems=items.length;
+    const g=gradeFromPct(catResult.pct);
+    if(cat.id===3){
+      // Cat 3: 14 items split into 2 rows (3.1-3.7, 3.8-3.14)
+      const row1=items.slice(0,7),row2=items.slice(7);
+      // Header row 1
+      h+='<tr class="bg-gray-50 border-t-2 border-'+cat.css+'" style="border-top:3px solid '+cat.col+'">';
+      h+='<td rowspan="4" class="border border-gray-300 p-2 text-center font-bold align-middle" style="min-width:80px;background:'+cat.col+'11"><div class="text-xs" style="color:'+cat.col+'">\\u0e2b\\u0e21\\u0e27\\u0e14\\u0e17\\u0e35\\u0e48 '+cat.id+'</div><div class="text-xs text-gray-500">\\u0e40\\u0e15\\u0e47\\u0e21 '+cat.mx+'</div><div class="text-xs text-gray-400">('+cat.wt+')</div></td>';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs">'+cat.sn+' ('+nItems+' \\u0e02\\u0e49\\u0e2d)</td>';
+      row1.forEach(it=>{h+='<td class="border border-gray-300 p-1 text-center font-medium text-gray-600">'+it.code+'</td>';});
+      h+='</tr>';
+      // Score row 1
+      h+='<tr>';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs">\\u0e04\\u0e30\\u0e41\\u0e19\\u0e19\\u0e17\\u0e35\\u0e48\\u0e44\\u0e14\\u0e49</td>';
+      row1.forEach(it=>{h+='<td class="border border-gray-300 p-1 text-center font-bold"><span class="inline-block w-7 h-7 leading-7 rounded '+scoreBg(it.v)+'">'+it.v+'</span></td>';});
+      h+='</tr>';
+      // Header row 2
+      h+='<tr class="bg-gray-50">';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs"></td>';
+      row2.forEach(it=>{h+='<td class="border border-gray-300 p-1 text-center font-medium text-gray-600">'+it.code+'</td>';});
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">\\u0e23\\u0e27\\u0e21</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">%</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">\\u0e23\\u0e30\\u0e14\\u0e31\\u0e1a</td>';
+      h+='</tr>';
+      // Score row 2
+      h+='<tr>';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs">\\u0e04\\u0e30\\u0e41\\u0e19\\u0e19\\u0e17\\u0e35\\u0e48\\u0e44\\u0e14\\u0e49</td>';
+      row2.forEach(it=>{h+='<td class="border border-gray-300 p-1 text-center font-bold"><span class="inline-block w-7 h-7 leading-7 rounded '+scoreBg(it.v)+'">'+it.v+'</span></td>';});
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-lg">'+catResult.raw+'</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold">'+catResult.pct.toFixed(0)+'</td>';
+      h+='<td class="border border-gray-300 p-1 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeBg(g)+'">'+g+'</span></td>';
+      h+='</tr>';
+    }else{
+      // Normal category: 1 header row + 1 score row
+      h+='<tr class="bg-gray-50" style="border-top:3px solid '+cat.col+'">';
+      h+='<td rowspan="2" class="border border-gray-300 p-2 text-center font-bold align-middle" style="min-width:80px;background:'+cat.col+'11"><div class="text-xs" style="color:'+cat.col+'">'+(cat.id===4?'\\u0e2b\\u0e21\\u0e27\\u0e14\\u0e17\\u0e35\\u0e48 4':'\\u0e2b\\u0e21\\u0e27\\u0e14\\u0e17\\u0e35\\u0e48 '+cat.id)+'</div><div class="text-xs text-gray-500">\\u0e40\\u0e15\\u0e47\\u0e21 '+catResult.mx+'</div><div class="text-xs text-gray-400">('+cat.wt+')</div></td>';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs">'+cat.sn+(cat.id===4?' (\\u0e40\\u0e25\\u0e37\\u0e2d\\u0e01 2 \\u0e08\\u0e32\\u0e01 5)':' ('+nItems+' \\u0e02\\u0e49\\u0e2d)')+'</td>';
+      items.forEach(it=>{
+        let label=it.code;
+        if(it.code==='6.4')label='6.4'+(lv64?'':'*');
+        h+='<td class="border border-gray-300 p-1 text-center font-medium text-gray-600">'+label+'</td>';
+      });
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">\\u0e23\\u0e27\\u0e21</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">%</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-gray-600">\\u0e23\\u0e30\\u0e14\\u0e31\\u0e1a</td>';
+      h+='</tr>';
+      // Score row
+      h+='<tr>';
+      h+='<td class="border border-gray-300 p-1 text-gray-500 text-xs">\\u0e04\\u0e30\\u0e41\\u0e19\\u0e19\\u0e17\\u0e35\\u0e48\\u0e44\\u0e14\\u0e49</td>';
+      items.forEach(it=>{
+        if(it.isNA){
+          h+='<td class="border border-gray-300 p-1 text-center text-gray-400 text-xs">N/A</td>';
+        }else{
+          const topBadge=(it.isTop2?'<div class="text-amber-600 text-xxs font-bold">TOP</div>':'');
+          h+='<td class="border border-gray-300 p-1 text-center font-bold">'+topBadge+'<span class="inline-block w-7 h-7 leading-7 rounded '+scoreBg(it.v)+'">'+it.v+'</span></td>';
+        }
+      });
+      h+='<td class="border border-gray-300 p-1 text-center font-bold text-lg">'+catResult.raw+'</td>';
+      h+='<td class="border border-gray-300 p-1 text-center font-bold">'+catResult.pct.toFixed(0)+'</td>';
+      h+='<td class="border border-gray-300 p-1 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeBg(g)+'">'+g+'</span></td>';
+      h+='</tr>';
+    }
+  });
+  // Summary row
+  const tG=cs.grade;
+  const passed=cs.wpct>=80;
+  const nEff=cs.categories.reduce((s,c)=>{if(c.id===4)return s+2;return s+(c.mx/5);},0);
+  const avgItem=nEff>0?(cs.totalRaw/nEff).toFixed(2):'0';
+  h+='<tr class="bg-indigo-50 border-t-2 border-indigo-400">';
+  h+='<td colspan="2" class="border border-gray-300 p-2 font-bold text-right text-sm">\\u0e23\\u0e27\\u0e21\\u0e17\\u0e31\\u0e49\\u0e07\\u0e2b\\u0e21\\u0e14</td>';
+  h+='<td colspan="5" class="border border-gray-300 p-2 text-center"><span class="font-bold text-lg">'+cs.totalRaw+'</span> / '+cs.totalMax+'</td>';
+  h+='<td class="border border-gray-300 p-2 text-center font-bold text-lg">'+cs.wpct.toFixed(1)+'%</td>';
+  h+='<td class="border border-gray-300 p-2 text-center"><span class="px-3 py-1 rounded text-sm font-bold '+gradeBg(tG)+'">'+tG+'</span></td>';
+  h+='<td class="border border-gray-300 p-2 text-center font-bold text-sm">'+(passed?'<span class="text-emerald-600">\\u0e1c\\u0e48\\u0e32\\u0e19</span>':'<span class="text-red-600">\\u0e44\\u0e21\\u0e48\\u0e1c\\u0e48\\u0e32\\u0e19</span>')+'</td>';
+  h+='</tr>';
+  h+='</table>';
+  // --- Category summary table (มุมมอง B) ---
+  h+='<h4 class="font-bold text-gray-700 mt-5 mb-2 text-sm">\\u0e2a\\u0e23\\u0e38\\u0e1b\\u0e23\\u0e32\\u0e22\\u0e2b\\u0e21\\u0e27\\u0e14</h4>';
+  h+='<table class="w-full text-xs border-collapse border border-gray-300">';
+  h+='<thead><tr class="bg-gray-100">';
+  ['\\u0e2b\\u0e21\\u0e27\\u0e14','\\u0e0a\\u0e37\\u0e48\\u0e2d','\\u0e40\\u0e15\\u0e47\\u0e21','\\u0e44\\u0e14\\u0e49','\\u0e23\\u0e49\\u0e2d\\u0e22\\u0e25\\u0e30','\\u0e23\\u0e30\\u0e14\\u0e31\\u0e1a','\\u0e2a\\u0e31\\u0e14\\u0e2a\\u0e48\\u0e27\\u0e19','\\u0e40\\u0e09\\u0e25\\u0e35\\u0e48\\u0e22/\\u0e02\\u0e49\\u0e2d','Gap'].forEach(t=>{
+    h+='<th class="border border-gray-300 p-2 text-center">'+t+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+  cs.categories.forEach((c,i)=>{
+    const cat=CATS[i];const g=gradeFromPct(c.pct);
+    const nI=(cat.id===4?2:(c.mx/5));
+    const avg=nI>0?(c.raw/nI).toFixed(2):'0';
+    const gap=c.mx-c.raw;
+    const rowBg=c.pct<70?'bg-red-50':c.pct<80?'bg-amber-50':'';
+    h+='<tr class="'+rowBg+'">';
+    h+='<td class="border border-gray-300 p-2 text-center font-bold" style="color:'+cat.col+'">'+cat.id+'</td>';
+    h+='<td class="border border-gray-300 p-2">'+cat.sn+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center">'+c.mx+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center font-bold">'+c.raw+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center font-bold">'+c.pct.toFixed(1)+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeBg(g)+'">'+g+'</span></td>';
+    h+='<td class="border border-gray-300 p-2 text-center text-gray-500">'+cat.wt+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center">'+avg+'</td>';
+    h+='<td class="border border-gray-300 p-2 text-center font-bold '+(gap>0?'text-red-600':'text-emerald-600')+'">'+(gap>0?gap:'0')+'</td>';
+    h+='</tr>';
+  });
+  // Total row
+  h+='<tr class="bg-indigo-50 font-bold">';
+  h+='<td class="border border-gray-300 p-2 text-center" colspan="2">\\u0e23\\u0e27\\u0e21</td>';
+  h+='<td class="border border-gray-300 p-2 text-center">'+cs.totalMax+'</td>';
+  h+='<td class="border border-gray-300 p-2 text-center">'+cs.totalRaw+'</td>';
+  h+='<td class="border border-gray-300 p-2 text-center">'+cs.wpct.toFixed(1)+'</td>';
+  h+='<td class="border border-gray-300 p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeBg(tG)+'">'+tG+'</span></td>';
+  h+='<td class="border border-gray-300 p-2 text-center">100%</td>';
+  h+='<td class="border border-gray-300 p-2 text-center">'+avgItem+'</td>';
+  h+='<td class="border border-gray-300 p-2 text-center">'+(cs.totalMax-cs.totalRaw)+'</td>';
+  h+='</tr></tbody></table>';
   h+='</div>';
   return h;
 }
@@ -916,10 +1067,12 @@ async function openDetail(code){
     // Analysis
     const an=generateAnalysis(cs);
     document.getElementById('dAnalysis').innerHTML=renderAnalysisHTML(an);
+    document.getElementById('dScorecard').innerHTML=renderScorecard(cached,h.level);
   }else{
     mkRadar6('cRadarDet','chDet',[0,0,0,0,0,0]);
     document.getElementById('dCatBars').innerHTML='<p class="text-gray-400 text-xs">ไม่มีข้อมูลรายข้อ</p>';
     document.getElementById('dAnalysis').innerHTML='';
+    document.getElementById('dScorecard').innerHTML='';
   }
   // History — enhanced with trend chart, detailed table, interpretation
   const hsSorted=[...hs].sort((a,b)=>{
@@ -1088,10 +1241,12 @@ async function loadMyDash(code){
       mkRadar6('cRadarMy','chMy',cs.categories.map(c=>Math.round(c.pct)));
       const an=generateAnalysis(cs);
       document.getElementById('mAnalysis').innerHTML=renderAnalysisHTML(an);
+      document.getElementById('mScorecard').innerHTML=renderScorecard(cached,CH.level);
     }else{
       wp=Number(la.wpct||0);g=la.grade||gradeFromPct(wp);
       mkRadar6('cRadarMy','chMy',[0,0,0,0,0,0]);
       document.getElementById('mAnalysis').innerHTML='';
+      document.getElementById('mScorecard').innerHTML='';
     }
     document.getElementById('mComp').textContent=wp.toFixed(1);
     const ge=document.getElementById('mGrade');ge.textContent=gradeText(g);ge.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gradeClass(g);
@@ -1099,6 +1254,7 @@ async function loadMyDash(code){
     document.getElementById('mComp').textContent='-';document.getElementById('mGrade').textContent='ยังไม่มีข้อมูล';document.getElementById('mGrade').className='inline-block px-4 py-1.5 rounded-full text-sm bg-gray-200';
     mkRadar6('cRadarMy','chMy',[0,0,0,0,0,0]);
     document.getElementById('mAnalysis').innerHTML='';
+    document.getElementById('mScorecard').innerHTML='';
   }
 
   // Primary button: start or resume
