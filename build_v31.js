@@ -50,7 +50,8 @@ const html = `<!DOCTYPE html>
 <h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v4.3</h1>
 <div class="flex items-center gap-2 flex-wrap">
 <span id="headerUser" class="hidden text-sm opacity-90"></span>
-<button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">Dashboard รพ.</button>
+<button id="btnDashMain" onclick="showPage('pageDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">&#127968; ภาพรวมเขต</button>
+<button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">&#127973; Dashboard รพ.</button>
 <button id="btnLogin" data-testid="btn-login" onclick="showPage('pageLogin')" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg text-sm transition">เข้าสู่ระบบ</button>
 <button id="btnLogout" data-testid="btn-logout" onclick="doLogout()" class="hidden bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-sm transition">ออกจากระบบ</button>
 </div>
@@ -177,7 +178,7 @@ const html = `<!DOCTYPE html>
 
 <!-- PAGE: HOSPITAL DETAIL -->
 <div id="pageHospitalDetail" data-testid="page-hospital-detail" class="hidden container mx-auto px-4 py-6 fade-in">
-<button onclick="showPage('pageDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับหน้า Dashboard</button>
+<button onclick="showPage('pageDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับภาพรวมเขต</button>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="dName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="dProv" class="text-gray-500 text-sm mb-2">-</p><span id="dLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
@@ -216,6 +217,7 @@ const html = `<!DOCTYPE html>
 
 <!-- PAGE: MY DASHBOARD -->
 <div id="pageMyDashboard" data-testid="page-my-dashboard" class="hidden container mx-auto px-4 py-6 fade-in">
+<button onclick="showPage('pageDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับภาพรวมเขต</button>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="mName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="mProv" class="text-gray-500 text-sm mb-2">-</p><span id="mLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
@@ -238,6 +240,7 @@ const html = `<!DOCTYPE html>
 
 <!-- PAGE: ASSESSMENT -->
 <div id="pageAssessment" data-testid="page-assessment" class="hidden container mx-auto px-4 py-6 fade-in">
+<button onclick="showPage('pageMyDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับ Dashboard รพ.</button>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <div class="flex justify-between items-center mb-4">
 <div><h3 class="text-lg font-bold text-gray-800">แบบประเมินมาตรฐานการเงินการคลัง</h3><div id="aHospName" class="text-sm text-gray-500"></div></div>
@@ -263,6 +266,7 @@ const html = `<!DOCTYPE html>
 
 <!-- PAGE: REPORT -->
 <div id="pageReport" data-testid="page-report" class="hidden container mx-auto px-4 py-6 fade-in">
+<button onclick="showPage('pageMyDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับ Dashboard รพ.</button>
 <div id="rSaveToast" class="hidden mb-4 rounded-xl p-4 border text-sm fade-in"></div>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <h3 class="text-lg font-bold text-gray-800 mb-1">รายงานผลประเมิน</h3>
@@ -469,6 +473,8 @@ function showPage(id){
   document.getElementById('btnLogout').classList.toggle('hidden',!CU);
   document.getElementById('headerUser').classList.toggle('hidden',!CU);
   document.getElementById('btnMyDash').classList.toggle('hidden',!(CU&&CU.role==='hospital'));
+  // Show "ภาพรวมเขต" button when not on main dashboard
+  document.getElementById('btnDashMain').classList.toggle('hidden',id==='pageDashboard');
   document.getElementById('btnImport').classList.toggle('hidden',!(CU&&CU.role==='admin'&&id==='pageDashboard'));
   if(CU&&CU.role==='regional'&&CU.province&&id==='pageDashboard'){
     const fp=document.getElementById('fProv');if(fp&&CU.province){fp.value=CU.province;refreshDash();}
@@ -865,15 +871,26 @@ function getPrevRound(rn){
 }
 
 // ==================== DETAIL ====================
-function openDetail(code){
+async function openDetail(code){
   const codeStr=String(code);
   const h=AH.find(x=>String(x.code)===codeStr);if(!h)return;
+  showLoad('กำลังโหลดข้อมูล '+h.name+'...');
   // Clear search box so it doesn't persist
   const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
   document.getElementById('dName').textContent=h.name;document.getElementById('dProv').textContent=h.province;
   document.getElementById('dLev').textContent='ระดับ '+h.level;
   const rn=document.getElementById('fRnd').value;
-  const hs=AS.filter(s=>String(s.hospital_code)===codeStr).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+  // Fetch from server if we don't have detailed scores locally
+  let serverScores=[];
+  try{
+    const sr=await gAPI('getScores',{hospital_code:codeStr});
+    if(sr.success&&sr.scores){serverScores=sr.scores.map(s=>{s.round=normRound(s.round);if(s.wpct===undefined&&s.composite!==undefined)s.wpct=Number(s.composite)||0;return s;});}
+  }catch(e){}
+  // Merge: AS(historical+api) + freshly fetched server scores
+  const roundMap={};
+  AS.filter(s=>String(s.hospital_code)===codeStr).forEach(s=>{roundMap[normRound(s.round)]=s;});
+  serverScores.forEach(s=>{roundMap[s.round]=s;});
+  const hs=Object.values(roundMap).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
   const la=hs[0];
   if(la){
     document.getElementById('dComp').textContent=la.wpct!=null?Number(la.wpct).toFixed(1):'-';
@@ -881,8 +898,13 @@ function openDetail(code){
   }else{
     document.getElementById('dComp').textContent='-';document.getElementById('dGrade').textContent='-';document.getElementById('dGrade').className='inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200';
   }
-  // Category bars + radar from cached item scores
-  const cached=la?lg('r7_scores_'+codeStr+'_'+la.round):null;
+  // Category bars + radar: try localStorage first, then use server item scores
+  let cached=la?lg('r7_scores_'+codeStr+'_'+la.round):null;
+  if(!cached&&la){
+    // Build form-compatible data from server item scores
+    const match=serverScores.find(s=>s.round===la.round);
+    if(match){cached={round:la.round};EC.forEach(it=>{const k=ik(it.c);if(match['item_'+k]!==undefined)cached['i_'+k]=String(match['item_'+k]);});}
+  }
   if(cached){
     const cs=calcCatScores(cached,h.level);
     mkRadar6('cRadarDet','chDet',cs.categories.map(c=>Math.round(c.pct)));
@@ -928,8 +950,9 @@ function openDetail(code){
       const delta=prev!==null?(wp-prev):null;
       const deltaStr=delta!==null?(delta>0?'<span class="text-emerald-600">&#8593;+'+delta.toFixed(1)+'</span>':delta<0?'<span class="text-red-500">&#8595;'+delta.toFixed(1)+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">-</span>';
       const passed=wp>=80;
-      // Get category scores from cache
-      const sc=lg('r7_scores_'+codeStr+'_'+(s.round||''));
+      // Get category scores from cache or server data
+      let sc=lg('r7_scores_'+codeStr+'_'+(s.round||''));
+      if(!sc){const svMatch=serverScores.find(sv=>sv.round===(s.round||''));if(svMatch){sc={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(svMatch['item_'+k]!==undefined)sc['i_'+k]=String(svMatch['item_'+k]);});}}
       let catCells='';
       if(sc){
         const cs=calcCatScores(sc,h.level);
@@ -965,14 +988,14 @@ function openDetail(code){
     // Grade interpretation
     const gradeDesc={'A':'ดีเยี่ยม (&ge;90%) — มาตรฐานสูง ควรเป็นแบบอย่าง','B':'ดี (&ge;80%) — ผ่านเกณฑ์ มีศักยภาพยกระดับสู่ A','C':'พอใช้ (&ge;70%) — ต้องพัฒนาเพิ่มเติมเพื่อผ่านเกณฑ์','D':'ต้องปรับปรุง (<70%) — ต้องเร่งพัฒนาอย่างจริงจัง'};
     interp+='<div><span class="font-medium">ระดับ '+latG+':</span> '+(gradeDesc[latG]||'-')+'</div>';
-    // Weak categories
+    // Weak categories (use cached from above — may be from server)
     if(cached){
-      const cs=calcCatScores(cached,h.level);
-      const weak=cs.categories.filter(c=>c.pct<70).sort((a,b)=>a.pct-b.pct);
+      const cs2=calcCatScores(cached,h.level);
+      const weak=cs2.categories.filter(c=>c.pct<70).sort((a,b)=>a.pct-b.pct);
       if(weak.length>0){
         interp+='<div class="text-red-700"><span class="font-medium">&#9888; หมวดที่ต้องพัฒนาเร่งด่วน:</span> '+weak.map(w=>{const cat=CATS.find(c=>c.id===w.id);return(cat?cat.sn:'หมวด '+w.id)+' ('+w.pct.toFixed(1)+'%)';}).join(', ')+'</div>';
       }
-      const strong=cs.categories.filter(c=>c.pct>=90).sort((a,b)=>b.pct-a.pct);
+      const strong=cs2.categories.filter(c=>c.pct>=90).sort((a,b)=>b.pct-a.pct);
       if(strong.length>0){
         interp+='<div class="text-emerald-700"><span class="font-medium">&#10004; จุดแข็ง:</span> '+strong.map(w=>{const cat=CATS.find(c=>c.id===w.id);return(cat?cat.sn:'หมวด '+w.id)+' ('+w.pct.toFixed(1)+'%)';}).join(', ')+'</div>';
       }
@@ -984,6 +1007,7 @@ function openDetail(code){
     document.getElementById('dHistInterpret').innerHTML='';
     if(document.getElementById('cHistLine')){const c2=document.getElementById('cHistLine').getContext('2d');if(window._chHistLine)window._chHistLine.destroy();}
   }
+  hideLoad();
   // Strategy recommendations
   let stratHtml='';
   if(cached){
@@ -1120,6 +1144,17 @@ function startOrResume(){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์ทำแบบประเมิน');return;}
   const now=new Date();const by=now.getFullYear()+543;
   const cr=(now.getMonth()<6?'1/':'2/')+by;
+  // Check if this round already has submitted data
+  if(CH){
+    const st=lg('r7_status_'+CH.code+'_'+cr);
+    const saved=lg('r7_scores_'+CH.code+'_'+cr);
+    const existInAS=AS.find(s=>String(s.hospital_code)===String(CH.code)&&s.round===cr);
+    if((st&&st.status==='submitted')||saved||existInAS){
+      const choice=confirm('รอบ '+cr+' มีการประเมินแล้ว\n\n• กด "ตกลง" → แก้ไขข้อมูลเดิม (โหลดคะแนนที่บันทึกไว้)\n• กด "ยกเลิก" → ยกเลิก');
+      if(choice){editAssess(cr);return;}
+      else return;
+    }
+  }
   _rd=null;
   document.getElementById('editBanner').innerHTML='';
   document.getElementById('aHospName').textContent=CH?(CH.name+' ('+CH.code+')'+' — ระดับ '+CH.level):'';
