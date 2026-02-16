@@ -1049,12 +1049,17 @@ async function openDetail(code){
   }else{
     document.getElementById('dComp').textContent='-';document.getElementById('dGrade').textContent='-';document.getElementById('dGrade').className='inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200';
   }
-  // Category bars + radar: try localStorage first, then use server item scores
+  // Category bars + radar: try localStorage > serverScores > AS (allScores)
   let cached=la?lg('r7_scores_'+codeStr+'_'+la.round):null;
   if(!cached&&la){
     // Build form-compatible data from server item scores
     const match=serverScores.find(s=>s.round===la.round);
     if(match){cached={round:la.round};EC.forEach(it=>{const k=ik(it.c);if(match['item_'+k]!==undefined)cached['i_'+k]=String(match['item_'+k]);});}
+  }
+  if(!cached&&la){
+    // Fallback: try AS (allScores) which also has item-level data
+    const asMatch=AS.find(s=>String(s.hospital_code)===codeStr&&normRound(s.round)===la.round);
+    if(asMatch&&asMatch['item_1_1']!==undefined){cached={round:la.round};EC.forEach(it=>{const k=ik(it.c);if(asMatch['item_'+k]!==undefined)cached['i_'+k]=String(asMatch['item_'+k]);});}
   }
   if(cached){
     const cs=calcCatScores(cached,h.level);
@@ -1106,6 +1111,7 @@ async function openDetail(code){
       // Get category scores from cache or server data
       let sc=lg('r7_scores_'+codeStr+'_'+(s.round||''));
       if(!sc){const svMatch=serverScores.find(sv=>sv.round===(s.round||''));if(svMatch){sc={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(svMatch['item_'+k]!==undefined)sc['i_'+k]=String(svMatch['item_'+k]);});}}
+      if(!sc&&s['item_1_1']!==undefined){sc={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(s['item_'+k]!==undefined)sc['i_'+k]=String(s['item_'+k]);});}
       let catCells='';
       if(sc){
         const cs=calcCatScores(sc,h.level);
