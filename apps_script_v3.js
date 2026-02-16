@@ -10,6 +10,46 @@ const ITEMS = ['1.1','1.2','1.3','1.4','1.5','1.6','2.1','2.2',
   '3.1','3.2','3.3','3.4','3.5','3.6','3.7','3.8','3.9','3.10','3.11','3.12','3.13','3.14',
   '4.1','4.2','4.3','4.4','4.5','5.1','6.1','6.2','6.3','6.4','6.5'];
 
+// ==================== HELPERS ====================
+// Sanitize: replace NaN/Infinity/undefined with 0 for numeric, '' for string
+function sanitize(val) {
+  if (val === undefined || val === null) return '';
+  if (typeof val === 'number') {
+    if (isNaN(val) || !isFinite(val)) return 0;
+    return val;
+  }
+  return val;
+}
+
+// Normalize round: Google Sheets may convert "1/2569" to a Date object
+// Convert back to "X/YYYY" format
+function normalizeRound(val) {
+  if (!val) return '';
+  // Already a string like "1/2569" or "2/2568"
+  if (typeof val === 'string' && /^\d\/\d{4}$/.test(val)) return val;
+  // If it's a Date object (Google Sheets auto-converted)
+  if (val instanceof Date) {
+    var month = val.getMonth() + 1; // 0-indexed
+    var year = val.getFullYear();
+    // Convert: Jan=1st half, Jul=2nd half
+    var half = month <= 6 ? 1 : 2;
+    // Year in Buddhist Era (already BE if > 2500)
+    if (year < 2500) year += 543;
+    return half + '/' + year;
+  }
+  // If it's a string that looks like ISO date "2569-01-01T..."
+  var s = String(val);
+  var isoMatch = s.match(/^(\d{4})-(\d{2})/);
+  if (isoMatch) {
+    var yr = parseInt(isoMatch[1]);
+    var mo = parseInt(isoMatch[2]);
+    var h = mo <= 6 ? 1 : 2;
+    if (yr < 2500) yr += 543;
+    return h + '/' + yr;
+  }
+  return s;
+}
+
 // ==================== LOGGING ====================
 function writeLog(action, user, detail) {
   try {
@@ -17,15 +57,14 @@ function writeLog(action, user, detail) {
     var logSheet = ss.getSheetByName('logs');
     if (!logSheet) {
       logSheet = ss.insertSheet('logs');
-      logSheet.appendRow(['timestamp', 'action', 'user', 'detail', 'ip']);
-      logSheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+      logSheet.appendRow(['timestamp', 'action', 'user', 'detail']);
+      logSheet.getRange(1, 1, 1, 4).setFontWeight('bold');
     }
     logSheet.appendRow([
       new Date().toISOString(),
       action || '',
       user || '',
-      typeof detail === 'object' ? JSON.stringify(detail) : String(detail || ''),
-      ''
+      typeof detail === 'object' ? JSON.stringify(detail) : String(detail || '')
     ]);
   } catch(e) {
     // Logging should never break the main flow
@@ -144,7 +183,6 @@ function login(username, password) {
 }
 
 // ==================== HOSPITALS ====================
-// Read hospitals sheet using headers (not hardcoded indices)
 function readHospitalsWithHeaders() {
   var sheet = getSheet('hospitals');
   if (!sheet) return [];
@@ -162,9 +200,7 @@ function readHospitalsWithHeaders() {
   return result;
 }
 
-// Map hospital row from headers to standard format
 function mapHospitalRow(row) {
-  // Try common header names (Thai sheets may use various names)
   var code = row['hcode'] || row['code'] || row['รหัส'] || '';
   var name = row['hname'] || row['name'] || row['ชื่อ'] || row['ชื่อหน่วยบริการ'] || '';
   var province = row['province'] || row['จังหวัด'] || row['changwat'] || '';
@@ -252,7 +288,6 @@ function getAllScores() {
   var scores = [];
 
   for (var i = 1; i < data.length; i++) {
-    // Skip empty rows
     if (!data[i][0] && !data[i][1]) continue;
     var row = sheetRowToApi(headers, data[i]);
     scores.push(row);
@@ -260,31 +295,35 @@ function getAllScores() {
   return { success: true, scores: scores };
 }
 
-// Convert sheet row → API format (hcode → hospital_code, 1.1 → item_1_1)
+// Convert sheet row → API format
 function sheetRowToApi(headers, rowData) {
   var result = {};
   for (var j = 0; j < headers.length; j++) {
     var h = String(headers[j]);
     var v = rowData[j];
 
-    if (h === 'hcode') {
+    if (h === 'round') {
+      // Always normalize round (may be Date object from Sheets)
+      result['round'] = normalizeRound(v);
+    } else if (h === 'hcode') {
       result['hospital_code'] = String(v);
     } else if (/^\d+\.\d+$/.test(h)) {
-      // Score column like "1.1" → "item_1_1"
-      // Ensure numeric
-      result['item_' + h.replace('.', '_')] = (v === '' || v === null || v === undefined) ? '' : Number(v);
+      // Score column
+      var numVal = (v === '' || v === null || v === undefined || v === 'NA') ? '' : Number(v);
+      result['item_' + h.replace('.', '_')] = (typeof numVal === 'number' && isNaN(numVal)) ? 0 : numVal;
     } else if (['raw_total','c1','c2','c3','c4','c5','c6','composite',
                 'dim_revenue','dim_cost','dim_discipline','dim_collection','dim_process',
                 'pass_status'].indexOf(h) >= 0) {
-      // Numeric fields
-      result[h] = (v === '' || v === null || v === undefined) ? '' : Number(v);
+      var n = (v === '' || v === null || v === undefined) ? '' : Number(v);
+      result[h] = (typeof n === 'number' && isNaN(n)) ? 0 : n;
     } else {
       result[h] = v;
     }
   }
-  // Ensure wpct exists (from composite)
+  // Ensure wpct exists
   if (result.wpct === undefined && result.composite !== undefined && result.composite !== '') {
     result.wpct = Number(result.composite);
+    if (isNaN(result.wpct)) result.wpct = 0;
   }
   return result;
 }
@@ -293,15 +332,16 @@ function sheetRowToApi(headers, rowData) {
 function saveScore(data) {
   var sheet = getSheet('scores');
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var roundCol = headers.indexOf('round');
+  var hcodeCol = headers.indexOf('hcode');
 
   // Look up hospital info
   var hInfo = lookupHospital(data.hospital_code);
 
-  // Build row data mapped to sheet headers
+  // Build row data
   var rowData = {};
-
-  // Clean round (remove leading apostrophe if present)
-  rowData['round'] = String(data.round || '').replace(/^'/, '');
+  var roundVal = String(data.round || '').replace(/^'/, '');
+  rowData['round'] = roundVal;
   rowData['hcode'] = String(data.hospital_code || '');
   rowData['hname'] = hInfo ? hInfo.name : (data.hname || '');
   rowData['province'] = hInfo ? hInfo.province : (data.province || '');
@@ -309,14 +349,15 @@ function saveScore(data) {
   rowData['group'] = hInfo ? hInfo.group : (data.group || '');
   rowData['date'] = data.date || '';
 
-  // Map item scores: item_X_Y → X.Y — ALWAYS as Number
+  // Map item scores — ALWAYS as Number, handle NA
   ITEMS.forEach(function(item) {
     var key = 'item_' + item.replace('.', '_');
     var val = data[key];
     if (val === 'NA' || val === 'na') {
       rowData[item] = 'NA';
     } else if (val !== undefined && val !== null && val !== '') {
-      rowData[item] = Number(val);
+      var n = Number(val);
+      rowData[item] = isNaN(n) ? 0 : n;
     } else {
       rowData[item] = 0;
     }
@@ -329,7 +370,7 @@ function saveScore(data) {
   });
   rowData['raw_total'] = rawTotal;
 
-  // Calculate category sums
+  // Category sums
   rowData['c1'] = sumItems(rowData, ['1.1','1.2','1.3','1.4','1.5','1.6']);
   rowData['c2'] = sumItems(rowData, ['2.1','2.2']);
   rowData['c3'] = sumItems(rowData, ['3.1','3.2','3.3','3.4','3.5','3.6','3.7','3.8','3.9','3.10','3.11','3.12','3.13','3.14']);
@@ -337,24 +378,24 @@ function saveScore(data) {
   rowData['c5'] = sumItems(rowData, ['5.1']);
   rowData['c6'] = sumItems(rowData, ['6.1','6.2','6.3','6.4','6.5']);
 
-  // Composite + grade — use client values if provided, otherwise calculate
+  // Composite + grade
   if (data.composite !== undefined && data.composite !== '') {
-    rowData['composite'] = Number(data.composite);
-    rowData['grade'] = data.grade || gradeFromComposite(Number(data.composite));
+    rowData['composite'] = Number(data.composite) || 0;
+    rowData['grade'] = data.grade || gradeFromComposite(rowData['composite']);
   } else {
     var dims = calculateDimensions(data);
     rowData['composite'] = dims.composite;
     rowData['grade'] = dims.grade;
   }
-  rowData['pass_status'] = Number(rowData['composite']) >= 80 ? 1 : 0;
+  rowData['pass_status'] = rowData['composite'] >= 80 ? 1 : 0;
 
-  // Dimension scores — use client values if provided
+  // Dimension scores
   if (data.dim_revenue !== undefined) {
-    rowData['dim_revenue'] = Number(data.dim_revenue || 0);
-    rowData['dim_cost'] = Number(data.dim_cost || 0);
-    rowData['dim_discipline'] = Number(data.dim_discipline || 0);
-    rowData['dim_collection'] = Number(data.dim_collection || 0);
-    rowData['dim_process'] = Number(data.dim_process || 0);
+    rowData['dim_revenue'] = Number(data.dim_revenue) || 0;
+    rowData['dim_cost'] = Number(data.dim_cost) || 0;
+    rowData['dim_discipline'] = Number(data.dim_discipline) || 0;
+    rowData['dim_collection'] = Number(data.dim_collection) || 0;
+    rowData['dim_process'] = Number(data.dim_process) || 0;
   } else {
     var dims2 = calculateDimensions(data);
     rowData['dim_revenue'] = dims2.revenue;
@@ -370,24 +411,22 @@ function saveScore(data) {
   rowData['submitted_at'] = data.submitted_at || new Date().toISOString();
   rowData['updated_at'] = new Date().toISOString();
 
-  // Build the row array matching headers — ensure numbers stay as numbers
+  // Build row array — sanitize every value
   var newRow = headers.map(function(h) {
-    if (rowData[h] !== undefined) return rowData[h];
-    if (data[h] !== undefined) return data[h];
-    return '';
+    var val = rowData[h] !== undefined ? rowData[h] : (data[h] !== undefined ? data[h] : '');
+    return sanitize(val);
   });
 
-  // Check for existing entry (same hcode + round) → update instead of duplicate
+  // Find existing entry (same hcode + round) — also match date-converted rounds
   var allData = sheet.getDataRange().getValues();
-  var roundCol = headers.indexOf('round');
-  var hcodeCol = headers.indexOf('hcode');
   var existingRow = -1;
 
   if (roundCol >= 0 && hcodeCol >= 0) {
     for (var i = 1; i < allData.length; i++) {
-      if (String(allData[i][hcodeCol]) === String(data.hospital_code) &&
-          String(allData[i][roundCol]) === rowData['round']) {
-        existingRow = i + 1; // 1-indexed in Sheets
+      var rowHcode = String(allData[i][hcodeCol]);
+      var rowRound = normalizeRound(allData[i][roundCol]);
+      if (rowHcode === String(data.hospital_code) && rowRound === roundVal) {
+        existingRow = i + 1;
         break;
       }
     }
@@ -395,15 +434,28 @@ function saveScore(data) {
 
   if (existingRow > 0) {
     sheet.getRange(existingRow, 1, 1, headers.length).setValues([newRow]);
+    // Force round cell to plain text so "1/2569" is not converted to date
+    if (roundCol >= 0) {
+      var roundCell = sheet.getRange(existingRow, roundCol + 1);
+      roundCell.setNumberFormat('@');
+      roundCell.setValue(roundVal);
+    }
   } else {
     sheet.appendRow(newRow);
+    var lastRow = sheet.getLastRow();
+    // Force round cell to plain text
+    if (roundCol >= 0) {
+      var roundCell = sheet.getRange(lastRow, roundCol + 1);
+      roundCell.setNumberFormat('@');
+      roundCell.setValue(roundVal);
+    }
   }
 
-  // Log the save action
+  // Log
   writeLog('saveScore', data.submitted_by || data.hospital_code, {
     hospital_code: data.hospital_code,
     hname: rowData['hname'],
-    round: rowData['round'],
+    round: roundVal,
     composite: rowData['composite'],
     grade: rowData['grade'],
     raw_total: rawTotal,
@@ -415,7 +467,7 @@ function saveScore(data) {
     message: 'บันทึกสำเร็จ',
     updated: existingRow > 0,
     hospital_code: data.hospital_code,
-    round: rowData['round'],
+    round: roundVal,
     composite: rowData['composite'],
     grade: rowData['grade']
   };
@@ -432,17 +484,16 @@ function sumItems(rowData, items) {
   var total = 0;
   items.forEach(function(item) {
     if (rowData[item] !== '' && rowData[item] !== undefined && rowData[item] !== 'NA') {
-      total += Number(rowData[item]);
+      var n = Number(rowData[item]);
+      if (!isNaN(n)) total += n;
     }
   });
   return total;
 }
 
 function calculateDimensions(data) {
-  // Revenue: cat4 top 2 + 5.1
   var cat4Selected = (data.cat4_selected || '').split(',').map(function(s) { return s.trim(); });
-  var revenueSum = 0;
-  var revenueMax = 15;
+  var revenueSum = 0, revenueMax = 15;
 
   ['4_1','4_2','4_3','4_4','4_5'].forEach(function(item) {
     if (cat4Selected.indexOf(item.replace('_','.')) >= 0) {
@@ -451,25 +502,21 @@ function calculateDimensions(data) {
   });
   revenueSum += Number(data.item_5_1 || 0);
 
-  // Cost: 6.1-6.5
   var costSum = 0, costMax = 25;
   ['6_1','6_2','6_3','6_4','6_5'].forEach(function(item) {
     costSum += Number(data['item_' + item] || 0);
   });
 
-  // Discipline: 1.3-1.6, 3.12, 3.13
   var discSum = 0, discMax = 30;
   ['1_3','1_4','1_5','1_6','3_12','3_13'].forEach(function(item) {
     discSum += Number(data['item_' + item] || 0);
   });
 
-  // Collection: 3.7-3.11
   var collSum = 0, collMax = 25;
   ['3_7','3_8','3_9','3_10','3_11'].forEach(function(item) {
     collSum += Number(data['item_' + item] || 0);
   });
 
-  // Process: 1.1, 1.2, 2.1, 2.2, 3.1-3.6, 3.14
   var procSum = 0, procMax = 55;
   ['1_1','1_2','2_1','2_2','3_1','3_2','3_3','3_4','3_5','3_6','3_14'].forEach(function(item) {
     procSum += Number(data['item_' + item] || 0);
@@ -489,9 +536,7 @@ function calculateDimensions(data) {
     process * 0.05
   );
 
-  var grade = gradeFromComposite(composite);
-
-  return { revenue: revenue, cost: cost, discipline: discipline, collection: collection, process: process, composite: composite, grade: grade };
+  return { revenue: revenue, cost: cost, discipline: discipline, collection: collection, process: process, composite: composite, grade: gradeFromComposite(composite) };
 }
 
 // ==================== BEST PRACTICE ====================
@@ -509,7 +554,6 @@ function getBestPractice(level) {
 
   var bestScore = null;
   var bestComposite = 0;
-
   var headers = scoresData[0];
   var compositeIdx = headers.indexOf('composite');
   var hcodeIdx = headers.indexOf('hcode');
@@ -520,7 +564,7 @@ function getBestPractice(level) {
 
     if (hLevel === level) {
       var comp = Number(scoresData[i][compositeIdx >= 0 ? compositeIdx : 0] || 0);
-      if (comp > bestComposite) {
+      if (!isNaN(comp) && comp > bestComposite) {
         bestComposite = comp;
         bestScore = sheetRowToApi(headers, scoresData[i]);
       }

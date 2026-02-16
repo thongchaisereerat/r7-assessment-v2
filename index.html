@@ -505,6 +505,7 @@ function ls(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function lg(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lr(k){try{localStorage.removeItem(k);}catch(e){}}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function normRound(v){if(!v)return'';const s=String(v);if(/^\d\/\d{4}$/.test(s))return s;const m=s.match(/^(\d{4})-(\d{2})/);if(m){let y=parseInt(m[1]),mo=parseInt(m[2]);if(y<2500)y+=543;return(mo<=6?1:2)+'/'+y;}return s;}
 function nlbr(s){return esc(String(s||'')).replace(/\\n/g,'<br>').replace(/\n/g,'<br>');}
 
 function getLS(scores,rnd){
@@ -573,21 +574,19 @@ async function init(){
     }
     const histScores=processHistorical();
     if(s.success&&s.scores&&s.scores.length>0){
-      // Recalculate API scores with new weighted system
-      AS=s.scores.map(sc=>{
+      // Normalize rounds + recalculate
+      const apiScores=s.scores.map(sc=>{
+        sc.round=normRound(sc.round);
         const hp=AH.find(x=>String(x.code)===String(sc.hospital_code));
         const level=hp?hp.level:'';
-        // If we have item-level data in cache, recalculate
         const cached=lg('r7_scores_'+sc.hospital_code+'_'+sc.round);
         if(cached){
           const cs=calcCatScores(cached,level);
           sc.wpct=cs.wpct;sc.grade=cs.grade;sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;
-        }else if(sc.composite!==undefined){
-          // Use server's weighted score directly
-          sc.wpct=Number(sc.composite);
+        }else if(sc.composite!==undefined&&sc.composite!==''){
+          sc.wpct=Number(sc.composite)||0;
           sc.grade=sc.grade||gradeFromPct(sc.wpct);
         }else{
-          // Last fallback: estimate from raw score
           const raw=Number(sc.total_raw||0);
           const mx=(!level||['M1','M2','A'].includes(level))?150:145;
           sc.wpct=mx>0?Math.round(raw/mx*1000)/10:0;
@@ -595,7 +594,12 @@ async function init(){
           sc.total_max=mx;
         }
         return sc;
-      }).concat(histScores);
+      });
+      // Deduplicate: API scores override historical for same hospital+round
+      const dedup={};
+      histScores.forEach(s=>{dedup[String(s.hospital_code)+'_'+s.round]=s;});
+      apiScores.forEach(s=>{dedup[String(s.hospital_code)+'_'+s.round]=s;});
+      AS=Object.values(dedup);
     }else{AS=histScores;}
   }catch(e){AS=processHistorical();}
 
@@ -1327,8 +1331,8 @@ async function saveAssess(){
   if(existIdx>=0)AS[existIdx]=newEntry;else AS.push(newEntry);
   // Also try refreshing from server (non-blocking)
   gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){
-    sr.scores.forEach(sc=>{if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite);if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});
-    const hist=processHistorical();AS=sr.scores.concat(hist);
+    sr.scores.forEach(sc=>{sc.round=normRound(sc.round);if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite)||0;if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});
+    const hist=processHistorical();const dd={};hist.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});sr.scores.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});AS=Object.values(dd);
   }}).catch(()=>{});
   showReport(d,cs,dm,serverOk);
   }catch(err){
