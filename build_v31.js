@@ -181,8 +181,10 @@ const html = `<!DOCTYPE html>
 <button onclick="showPage('pageDashboard')" class="mb-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm">&larr; กลับภาพรวมเขต</button>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 <div class="space-y-4">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="dName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="dProv" class="text-gray-500 text-sm mb-2">-</p><span id="dLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span></div>
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div class="text-gray-500 text-xs mb-1">คะแนนถ่วงน้ำหนัก</div><div id="dComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div class="text-gray-400 text-xs mb-1">/ 100</div><div id="dGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold">-</div></div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 id="dName" class="text-xl font-bold text-gray-800 mb-1">-</h3><p id="dProv" class="text-gray-500 text-sm mb-2">-</p><span id="dLev" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">-</span>
+<div class="mt-3"><label class="text-gray-500 text-xs block mb-1">&#128197; เลือกรอบ</label><select id="dRoundSel" onchange="switchDetailRound()" class="border border-gray-200 p-2 rounded-lg text-sm w-full font-medium"></select></div>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"><div id="dRoundLabel" class="text-indigo-600 text-xs font-bold mb-1">-</div><div class="text-gray-500 text-xs mb-1">คะแนนถ่วงน้ำหนัก</div><div id="dComp" class="text-5xl font-bold text-indigo-600 mb-2">-</div><div class="text-gray-400 text-xs mb-1">/ 100</div><div id="dGrade" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold">-</div></div>
 </div>
 <div class="lg:col-span-2 space-y-4">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h4 class="font-bold text-gray-700 mb-2 text-sm">Radar 6 หมวด</h4><div style="position:relative;height:260px"><canvas id="cRadarDet"></canvas></div></div>
@@ -696,7 +698,14 @@ function buildRounds(){
 function populateRoundSelectors(){
   const rounds=buildRounds();
   const fRnd=document.getElementById('fRnd');
-  fRnd.innerHTML='<option value="">ล่าสุด</option>'+rounds.map(r=>'<option value="'+r+'">'+r+'</option>').join('');
+  // Find actual latest round from data
+  let latestDataRound='';
+  if(AS.length>0){
+    const rndSet=new Set();AS.forEach(s=>{if(s.round)rndSet.add(normRound(s.round));});
+    const dataRounds=[...rndSet].sort((a,b)=>{const[ra,ya]=a.split('/').map(Number);const[rb,yb]=b.split('/').map(Number);return yb!==ya?yb-ya:rb-ra;});
+    if(dataRounds.length>0)latestDataRound=dataRounds[0];
+  }
+  fRnd.innerHTML=rounds.map(r=>'<option value="'+r+'"'+(r===latestDataRound?' selected':'')+'>'+r+'</option>').join('');
   const aRound=document.getElementById('aRound');
   const now=new Date();const by=now.getFullYear()+543;
   const cr=(now.getMonth()<6?'1/':'2/')+by;
@@ -868,7 +877,7 @@ function refreshDash(){
   document.getElementById('sumSub').textContent=submitted+'/'+fh.length;
   ['A','B','C','D'].forEach(g=>{const el=document.getElementById('sum'+g);if(el)el.parentElement.style.outline=(_gradeFilter===g)?'2px solid #4f46e5':'';});
   // Dashboard subtitle
-  const roundLabel=rn||'ล่าสุด';
+  const roundLabel=rn||'-';
   const provLabel=pv||'เขต 7 ทั้งหมด';
   document.getElementById('dashSubtitle').textContent=provLabel+' | รอบ '+roundLabel+' | '+fh.length+' รพ.';
   // Submission tracking
@@ -1022,45 +1031,35 @@ function getPrevRound(rn){
 }
 
 // ==================== DETAIL ====================
-async function openDetail(code){
-  const codeStr=String(code);
-  const h=AH.find(x=>String(x.code)===codeStr);if(!h)return;
-  showLoad('กำลังโหลดข้อมูล '+h.name+'...');
-  // Clear search box so it doesn't persist
-  const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
-  document.getElementById('dName').textContent=h.name;document.getElementById('dProv').textContent=h.province;
-  document.getElementById('dLev').textContent='ระดับ '+h.level;
-  const rn=document.getElementById('fRnd').value;
-  // Fetch from server if we don't have detailed scores locally
-  let serverScores=[];
-  try{
-    const sr=await gAPI('getScores',{hospital_code:codeStr});
-    if(sr.success&&sr.scores){serverScores=sr.scores.map(s=>{s.round=normRound(s.round);if(s.wpct===undefined&&s.composite!==undefined)s.wpct=Number(s.composite)||0;return s;});}
-  }catch(e){}
-  // Merge: AS(historical+api) + freshly fetched server scores
-  const roundMap={};
-  AS.filter(s=>String(s.hospital_code)===codeStr).forEach(s=>{roundMap[normRound(s.round)]=s;});
-  serverScores.forEach(s=>{roundMap[s.round]=s;});
-  const hs=Object.values(roundMap).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
-  const la=hs[0];
-  if(la){
-    document.getElementById('dComp').textContent=la.wpct!=null?Number(la.wpct).toFixed(1):'-';
-    const g=la.grade||'-';const e=document.getElementById('dGrade');e.textContent=gradeText(g);e.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gradeClass(g);
+// Store detail context for round switching
+let _detailCtx=null;
+
+function getCachedForRound(codeStr,round,serverScores){
+  let cached=lg('r7_scores_'+codeStr+'_'+round);
+  if(!cached){
+    const match=serverScores.find(s=>s.round===round);
+    if(match){cached={round};EC.forEach(it=>{const k=ik(it.c);if(match['item_'+k]!==undefined)cached['i_'+k]=String(match['item_'+k]);});}
+  }
+  if(!cached){
+    const asMatch=AS.find(s=>String(s.hospital_code)===codeStr&&normRound(s.round)===round);
+    if(asMatch&&asMatch['item_1_1']!==undefined){cached={round};EC.forEach(it=>{const k=ik(it.c);if(asMatch['item_'+k]!==undefined)cached['i_'+k]=String(asMatch['item_'+k]);});}
+  }
+  return cached;
+}
+
+function renderDetailForRound(round){
+  if(!_detailCtx)return;
+  const{h,codeStr,serverScores,hsSorted}=_detailCtx;
+  const s=_detailCtx.roundMap[round];
+  // Update round label
+  document.getElementById('dRoundLabel').textContent='\\u0e23\\u0e2d\\u0e1a '+round;
+  if(s){
+    document.getElementById('dComp').textContent=s.wpct!=null?Number(s.wpct).toFixed(1):'-';
+    const g=s.grade||gradeFromPct(Number(s.wpct||0));const e=document.getElementById('dGrade');e.textContent=gradeText(g);e.className='inline-block px-4 py-1.5 rounded-full text-sm font-bold '+gradeClass(g);
   }else{
     document.getElementById('dComp').textContent='-';document.getElementById('dGrade').textContent='-';document.getElementById('dGrade').className='inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200';
   }
-  // Category bars + radar: try localStorage > serverScores > AS (allScores)
-  let cached=la?lg('r7_scores_'+codeStr+'_'+la.round):null;
-  if(!cached&&la){
-    // Build form-compatible data from server item scores
-    const match=serverScores.find(s=>s.round===la.round);
-    if(match){cached={round:la.round};EC.forEach(it=>{const k=ik(it.c);if(match['item_'+k]!==undefined)cached['i_'+k]=String(match['item_'+k]);});}
-  }
-  if(!cached&&la){
-    // Fallback: try AS (allScores) which also has item-level data
-    const asMatch=AS.find(s=>String(s.hospital_code)===codeStr&&normRound(s.round)===la.round);
-    if(asMatch&&asMatch['item_1_1']!==undefined){cached={round:la.round};EC.forEach(it=>{const k=ik(it.c);if(asMatch['item_'+k]!==undefined)cached['i_'+k]=String(asMatch['item_'+k]);});}
-  }
+  const cached=getCachedForRound(codeStr,round,serverScores);
   if(cached){
     const cs=calcCatScores(cached,h.level);
     mkRadar6('cRadarDet','chDet',cs.categories.map(c=>Math.round(c.pct)));
@@ -1069,26 +1068,97 @@ async function openDetail(code){
       bars+=\`<div><div class="flex justify-between text-xs mb-1"><span class="text-gray-700">\${cat.sn} (\${cat.wt})</span><span class="font-bold" style="color:\${cat.col}">\${c.raw}/\${c.mx} (\${c.pct.toFixed(1)}%)</span></div><div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div class="h-2.5 rounded-full" style="width:\${c.pct}%;background:\${cat.col}"></div></div></div>\`;
     });
     document.getElementById('dCatBars').innerHTML=bars;
-    // Analysis
     const an=generateAnalysis(cs);
     document.getElementById('dAnalysis').innerHTML=renderAnalysisHTML(an);
     document.getElementById('dScorecard').innerHTML=renderScorecard(cached,h.level);
   }else{
     mkRadar6('cRadarDet','chDet',[0,0,0,0,0,0]);
-    document.getElementById('dCatBars').innerHTML='<p class="text-gray-400 text-xs">ไม่มีข้อมูลรายข้อ</p>';
+    document.getElementById('dCatBars').innerHTML='<p class="text-gray-400 text-xs">\\u0e44\\u0e21\\u0e48\\u0e21\\u0e35\\u0e02\\u0e49\\u0e2d\\u0e21\\u0e39\\u0e25\\u0e23\\u0e32\\u0e22\\u0e02\\u0e49\\u0e2d</p>';
     document.getElementById('dAnalysis').innerHTML='';
     document.getElementById('dScorecard').innerHTML='';
   }
-  // History — enhanced with trend chart, detailed table, interpretation
+  // Best practice for this round
+  const sl=AS.filter(ss=>{const hp=AH.find(x=>String(x.code)===String(ss.hospital_code));return hp&&hp.level===h.level&&String(ss.hospital_code)!==codeStr&&normRound(ss.round)===round;});
+  if(sl.length>0){
+    const b=sl.reduce((a,b)=>(Number(b.wpct||0)>(Number(a.wpct||0))?b:a),sl[0]);
+    const bh=AH.find(x=>String(x.code)===String(b.hospital_code));
+    document.getElementById('dBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> — \${Number(b.wpct||0).toFixed(1)}% \${gradeLabel(b.grade)}\`;
+  }else{document.getElementById('dBest').textContent='\\u0e44\\u0e21\\u0e48\\u0e21\\u0e35\\u0e02\\u0e49\\u0e2d\\u0e21\\u0e39\\u0e25\\u0e40\\u0e1b\\u0e23\\u0e35\\u0e22\\u0e1a\\u0e40\\u0e17\\u0e35\\u0e22\\u0e1a';}
+  // Strategy
+  let stratHtml='';
+  if(cached){
+    const cs=calcCatScores(cached,h.level);
+    const sorted=[...cs.categories].sort((a,b)=>a.pct-b.pct);
+    const lowest=sorted[0];const lowCat=CATS.find(c=>c.id===lowest.id);
+    const qr=QUICK_WINS.filter(q=>q.cat===lowest.id);
+    stratHtml='<div class="space-y-2">';
+    stratHtml+='<div class="text-xs text-gray-500">\\u0e08\\u0e32\\u0e01\\u0e01\\u0e32\\u0e23\\u0e27\\u0e34\\u0e40\\u0e04\\u0e23\\u0e32\\u0e30\\u0e2b\\u0e4c\\u0e04\\u0e30\\u0e41\\u0e19\\u0e19\\u0e23\\u0e32\\u0e22\\u0e2b\\u0e21\\u0e27\\u0e14</div>';
+    stratHtml+='<div class="bg-red-50 rounded-lg p-2 text-xs"><span class="font-bold text-red-700">\\u0e25\\u0e33\\u0e14\\u0e31\\u0e1a\\u0e17\\u0e35\\u0e48 1:</span> '+(lowCat?lowCat.nm:'-')+' ('+lowest.pct.toFixed(1)+'%)</div>';
+    if(sorted[1]){const s2Cat=CATS.find(c=>c.id===sorted[1].id);stratHtml+='<div class="bg-amber-50 rounded-lg p-2 text-xs"><span class="font-bold text-amber-700">\\u0e25\\u0e33\\u0e14\\u0e31\\u0e1a\\u0e17\\u0e35\\u0e48 2:</span> '+(s2Cat?s2Cat.nm:'-')+' ('+sorted[1].pct.toFixed(1)+'%)</div>';}
+    if(qr.length>0){
+      stratHtml+='<div class="mt-2 text-xs"><span class="font-bold text-gray-700">Quick Wins:</span></div>';
+      qr.forEach(q=>{stratHtml+='<div class="text-xs bg-blue-50 rounded p-2 mt-1"><span class="font-medium">'+q.item+' '+q.title+'</span> — '+q.action+' <span class="text-gray-400">('+q.time+')</span></div>';});
+    }
+    stratHtml+='</div>';
+  }
+  document.getElementById('dStrategy').innerHTML=stratHtml||'<p class="text-gray-400 text-xs">\\u0e44\\u0e21\\u0e48\\u0e21\\u0e35\\u0e02\\u0e49\\u0e2d\\u0e21\\u0e39\\u0e25</p>';
+}
+
+function switchDetailRound(){
+  const sel=document.getElementById('dRoundSel');
+  if(sel&&_detailCtx)renderDetailForRound(sel.value);
+}
+
+async function openDetail(code){
+  const codeStr=String(code);
+  const h=AH.find(x=>String(x.code)===codeStr);if(!h)return;
+  showLoad('กำลังโหลดข้อมูล '+h.name+'...');
+  const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
+  document.getElementById('dName').textContent=h.name;document.getElementById('dProv').textContent=h.province;
+  document.getElementById('dLev').textContent='ระดับ '+h.level;
+  // Fetch from server
+  let serverScores=[];
+  try{
+    const sr=await gAPI('getScores',{hospital_code:codeStr});
+    if(sr.success&&sr.scores){serverScores=sr.scores.map(s=>{s.round=normRound(s.round);if(s.wpct===undefined&&s.composite!==undefined)s.wpct=Number(s.composite)||0;return s;});}
+  }catch(e){}
+  // Merge: AS + server
+  const roundMap={};
+  AS.filter(s=>String(s.hospital_code)===codeStr).forEach(s=>{roundMap[normRound(s.round)]=s;});
+  serverScores.forEach(s=>{roundMap[s.round]=s;});
+  const hs=Object.values(roundMap).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+  // Sort by round (chronological, newest first)
   const hsSorted=[...hs].sort((a,b)=>{
+    const[ra,ya]=String(a.round||'').split('/').map(Number);
+    const[rb,yb]=String(b.round||'').split('/').map(Number);
+    return(ya!==yb)?yb-ya:rb-ra;
+  });
+  // Populate round selector
+  const dRoundSel=document.getElementById('dRoundSel');
+  dRoundSel.innerHTML=hsSorted.map((s,i)=>'<option value="'+s.round+'">'+s.round+(i===0?' (\\u0e25\\u0e48\\u0e32\\u0e2a\\u0e38\\u0e14)':'')+'</option>').join('');
+  // Store context for round switching
+  _detailCtx={h,codeStr,serverScores,roundMap,hsSorted};
+  const la=hsSorted[0];
+  // Render selected round data
+  if(la){
+    renderDetailForRound(la.round);
+  }else{
+    document.getElementById('dRoundLabel').textContent='\\u0e44\\u0e21\\u0e48\\u0e21\\u0e35\\u0e02\\u0e49\\u0e2d\\u0e21\\u0e39\\u0e25';
+    document.getElementById('dComp').textContent='-';document.getElementById('dGrade').textContent='-';document.getElementById('dGrade').className='inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-gray-200';
+    mkRadar6('cRadarDet','chDet',[0,0,0,0,0,0]);
+    document.getElementById('dCatBars').innerHTML='<p class="text-gray-400 text-xs">\\u0e44\\u0e21\\u0e48\\u0e21\\u0e35\\u0e02\\u0e49\\u0e2d\\u0e21\\u0e39\\u0e25\\u0e23\\u0e32\\u0e22\\u0e02\\u0e49\\u0e2d</p>';
+    document.getElementById('dAnalysis').innerHTML='';
+    document.getElementById('dScorecard').innerHTML='';
+  }
+  // History — trend chart + detailed table + interpretation
+  const histSorted=[...Object.values(roundMap)].sort((a,b)=>{
     const[ra,ya]=String(a.round||'').split('/').map(Number);
     const[rb,yb]=String(b.round||'').split('/').map(Number);
     return(ya!==yb)?ya-yb:ra-rb;
   });
-  if(hsSorted.length>0){
-    // Trend line chart
-    const labels=hsSorted.map(s=>s.round||'-');
-    const vals=hsSorted.map(s=>Number(s.wpct||0));
+  if(histSorted.length>0){
+    const labels=histSorted.map(s=>s.round||'-');
+    const vals=histSorted.map(s=>Number(s.wpct||0));
     const ctx=document.getElementById('cHistLine');
     if(ctx){
       if(window._chHistLine)window._chHistLine.destroy();
@@ -1097,21 +1167,17 @@ async function openDetail(code){
         {label:'เกณฑ์ผ่าน (80%)',data:vals.map(()=>80),borderColor:'#ef4444',borderDash:[5,5],pointRadius:0,fill:false}
       ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{stepSize:20}}}}});
     }
-    // Detailed table with delta, grade, category scores
     let tbl='<div class="overflow-x-auto"><table class="w-full text-xs"><thead class="bg-gray-50"><tr><th class="p-2 text-left">รอบ</th><th class="p-2 text-center">คะแนน(%)</th><th class="p-2 text-center">&Delta;</th><th class="p-2 text-center">เกรด</th><th class="p-2 text-center">ผ่าน</th>';
     CATS.forEach(c=>{tbl+='<th class="p-1 text-center" title="'+c.nm+'">'+c.sn.substring(0,4)+'</th>';});
     tbl+='</tr></thead><tbody>';
-    hsSorted.forEach((s,idx)=>{
+    histSorted.forEach((s,idx)=>{
       const wp=Number(s.wpct||0);
       const g=s.grade||gradeFromPct(wp);
-      const prev=idx>0?Number(hsSorted[idx-1].wpct||0):null;
+      const prev=idx>0?Number(histSorted[idx-1].wpct||0):null;
       const delta=prev!==null?(wp-prev):null;
       const deltaStr=delta!==null?(delta>0?'<span class="text-emerald-600">&#8593;+'+delta.toFixed(1)+'</span>':delta<0?'<span class="text-red-500">&#8595;'+delta.toFixed(1)+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">-</span>';
       const passed=wp>=80;
-      // Get category scores from cache or server data
-      let sc=lg('r7_scores_'+codeStr+'_'+(s.round||''));
-      if(!sc){const svMatch=serverScores.find(sv=>sv.round===(s.round||''));if(svMatch){sc={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(svMatch['item_'+k]!==undefined)sc['i_'+k]=String(svMatch['item_'+k]);});}}
-      if(!sc&&s['item_1_1']!==undefined){sc={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(s['item_'+k]!==undefined)sc['i_'+k]=String(s['item_'+k]);});}
+      const sc=getCachedForRound(codeStr,s.round||'',serverScores)||(s['item_1_1']!==undefined?(()=>{const o={round:s.round};EC.forEach(it=>{const k=ik(it.c);if(s['item_'+k]!==undefined)o['i_'+k]=String(s['item_'+k]);});return o;})():null);
       let catCells='';
       if(sc){
         const cs=calcCatScores(sc,h.level);
@@ -1122,34 +1188,31 @@ async function openDetail(code){
       }else{
         catCells='<td colspan="6" class="p-1 text-center text-gray-300">-</td>';
       }
-      tbl+='<tr class="border-b border-gray-50'+(idx===hsSorted.length-1?' bg-indigo-50/50':'')+'"><td class="p-2 font-medium">'+(s.round||'-')+'</td><td class="p-2 text-center font-bold">'+wp.toFixed(1)+'</td><td class="p-2 text-center text-xs">'+deltaStr+'</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeClass(g)+'">'+g+'</span></td><td class="p-2 text-center">'+(passed?'<span class="text-emerald-600">&#10004;</span>':'<span class="text-red-500">&#10008;</span>')+'</td>'+catCells+'</tr>';
+      tbl+='<tr class="border-b border-gray-50'+(idx===histSorted.length-1?' bg-indigo-50/50':'')+'"><td class="p-2 font-medium">'+(s.round||'-')+'</td><td class="p-2 text-center font-bold">'+wp.toFixed(1)+'</td><td class="p-2 text-center text-xs">'+deltaStr+'</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold '+gradeClass(g)+'">'+g+'</span></td><td class="p-2 text-center">'+(passed?'<span class="text-emerald-600">&#10004;</span>':'<span class="text-red-500">&#10008;</span>')+'</td>'+catCells+'</tr>';
     });
     tbl+='</tbody></table></div>';
     document.getElementById('dHistTable').innerHTML=tbl;
     // Interpretation
-    const latest=hsSorted[hsSorted.length-1];
+    const latest=histSorted[histSorted.length-1];
     const latWp=Number(latest.wpct||0);
     const latG=latest.grade||gradeFromPct(latWp);
-    const oldest=hsSorted[0];
+    const oldest=histSorted[0];
     const oldWp=Number(oldest.wpct||0);
     const totalDelta=latWp-oldWp;
-    const nRounds=hsSorted.length;
+    const nRounds=histSorted.length;
     let interp='<div class="bg-gray-50 rounded-lg p-3 space-y-2 text-sm">';
     interp+='<div class="font-bold text-gray-700">&#128270; การแปลผล</div>';
-    // Trend analysis
     if(nRounds>=2){
       const trendWord=totalDelta>5?'มีแนวโน้มดีขึ้นอย่างชัดเจน':totalDelta>0?'มีแนวโน้มดีขึ้นเล็กน้อย':totalDelta>-5?'คะแนนค่อนข้างคงที่':('มีแนวโน้มลดลง');
       const trendColor=totalDelta>0?'text-emerald-700':totalDelta<0?'text-red-700':'text-gray-700';
       interp+='<div><span class="font-medium">แนวโน้ม:</span> <span class="'+trendColor+'">'+trendWord+'</span> (จาก '+oldWp.toFixed(1)+'% รอบ '+oldest.round+' เป็น '+latWp.toFixed(1)+'% รอบ '+latest.round+' เปลี่ยนแปลง '+(totalDelta>0?'+':'')+totalDelta.toFixed(1)+'%)</div>';
     }
-    // Pass/fail status
     interp+='<div><span class="font-medium">สถานะ:</span> '+(latWp>=80?'<span class="text-emerald-700 font-bold">ผ่านเกณฑ์</span> (เกณฑ์ &ge;80%)':'<span class="text-red-700 font-bold">ไม่ผ่านเกณฑ์</span> (ต้อง &ge;80% ขาดอีก '+(80-latWp).toFixed(1)+'%)')+'</div>';
-    // Grade interpretation
     const gradeDesc={'A':'ดีเยี่ยม (&ge;90%) — มาตรฐานสูง ควรเป็นแบบอย่าง','B':'ดี (&ge;80%) — ผ่านเกณฑ์ มีศักยภาพยกระดับสู่ A','C':'พอใช้ (&ge;70%) — ต้องพัฒนาเพิ่มเติมเพื่อผ่านเกณฑ์','D':'ต้องปรับปรุง (<70%) — ต้องเร่งพัฒนาอย่างจริงจัง'};
     interp+='<div><span class="font-medium">ระดับ '+latG+':</span> '+(gradeDesc[latG]||'-')+'</div>';
-    // Weak categories (use cached from above — may be from server)
-    if(cached){
-      const cs2=calcCatScores(cached,h.level);
+    const latCached=getCachedForRound(codeStr,latest.round,serverScores);
+    if(latCached){
+      const cs2=calcCatScores(latCached,h.level);
       const weak=cs2.categories.filter(c=>c.pct<70).sort((a,b)=>a.pct-b.pct);
       if(weak.length>0){
         interp+='<div class="text-red-700"><span class="font-medium">&#9888; หมวดที่ต้องพัฒนาเร่งด่วน:</span> '+weak.map(w=>{const cat=CATS.find(c=>c.id===w.id);return(cat?cat.sn:'หมวด '+w.id)+' ('+w.pct.toFixed(1)+'%)';}).join(', ')+'</div>';
@@ -1164,34 +1227,9 @@ async function openDetail(code){
   }else{
     document.getElementById('dHistTable').innerHTML='<p class="text-gray-400 text-xs">ยังไม่มีประวัติ</p>';
     document.getElementById('dHistInterpret').innerHTML='';
-    if(document.getElementById('cHistLine')){const c2=document.getElementById('cHistLine').getContext('2d');if(window._chHistLine)window._chHistLine.destroy();}
+    if(document.getElementById('cHistLine')){if(window._chHistLine)window._chHistLine.destroy();}
   }
   hideLoad();
-  // Strategy recommendations
-  let stratHtml='';
-  if(cached){
-    const cs=calcCatScores(cached,h.level);
-    const sorted=[...cs.categories].sort((a,b)=>a.pct-b.pct);
-    const lowest=sorted[0];const lowCat=CATS.find(c=>c.id===lowest.id);
-    const qr=QUICK_WINS.filter(q=>q.cat===lowest.id);
-    stratHtml='<div class="space-y-2">';
-    stratHtml+='<div class="text-xs text-gray-500">จากการวิเคราะห์คะแนนรายหมวด</div>';
-    stratHtml+='<div class="bg-red-50 rounded-lg p-2 text-xs"><span class="font-bold text-red-700">ลำดับที่ 1:</span> '+(lowCat?lowCat.nm:'-')+' ('+lowest.pct.toFixed(1)+'%)</div>';
-    if(sorted[1]){const s2Cat=CATS.find(c=>c.id===sorted[1].id);stratHtml+='<div class="bg-amber-50 rounded-lg p-2 text-xs"><span class="font-bold text-amber-700">ลำดับที่ 2:</span> '+(s2Cat?s2Cat.nm:'-')+' ('+sorted[1].pct.toFixed(1)+'%)</div>';}
-    if(qr.length>0){
-      stratHtml+='<div class="mt-2 text-xs"><span class="font-bold text-gray-700">Quick Wins:</span></div>';
-      qr.forEach(q=>{stratHtml+='<div class="text-xs bg-blue-50 rounded p-2 mt-1"><span class="font-medium">'+q.item+' '+q.title+'</span> — '+q.action+' <span class="text-gray-400">('+q.time+')</span></div>';});
-    }
-    stratHtml+='</div>';
-  }
-  document.getElementById('dStrategy').innerHTML=stratHtml||'<p class="text-gray-400 text-xs">ไม่มีข้อมูล</p>';
-  // Best practice — filter by round (ISS-002 fix)
-  const sl=AS.filter(s=>{const hp=AH.find(x=>String(x.code)===String(s.hospital_code));return hp&&hp.level===h.level&&String(s.hospital_code)!==codeStr&&(!rn||s.round===rn);});
-  if(sl.length>0){
-    const b=sl.reduce((a,b)=>(Number(b.wpct||0)>(Number(a.wpct||0))?b:a),sl[0]);
-    const bh=AH.find(x=>String(x.code)===String(b.hospital_code));
-    document.getElementById('dBest').innerHTML=\`<span class="font-medium">\${bh?bh.name:b.hospital_code}</span> — \${Number(b.wpct||0).toFixed(1)}% \${gradeLabel(b.grade)}\`;
-  }else{document.getElementById('dBest').textContent='ไม่มีข้อมูลเปรียบเทียบ';}
   showPage('pageHospitalDetail');
 }
 
@@ -1679,7 +1717,7 @@ function xlBuildSheet(aoa,colWidths,titleMergeCols){
 function exportDashExcel(){
   const pv=document.getElementById('fProv').value,rn=document.getElementById('fRnd').value;
   const lm=getLS(AS,rn);let fh=AH.slice();if(pv)fh=fh.filter(h=>h.province===pv);
-  const provLabel=pv||'เขต 7 ทั้งหมด';const roundLabel=rn||'ล่าสุด';
+  const provLabel=pv||'เขต 7 ทั้งหมด';const roundLabel=rn||'-';
   const now=new Date();const dateStr=now.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
   // Count grades
   let gA=0,gB=0,gC=0,gD=0,submitted=0,totalWpct=0;
