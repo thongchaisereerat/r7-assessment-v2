@@ -23,7 +23,7 @@
 - Composite Score: 5 มิติ (Revenue 35%, Discipline 30%, Cost 15%, Collection 15%, Process 5%)
 
 ## APIs
-- Apps Script v3: https://script.google.com/macros/s/AKfycbzXjAwj3KR92Pm1QNsYTmwn7SwMs4mgwoiefmiZBOZ9KWQ0tbzylth5J_Ios44WAdO2Lg/exec
+- Apps Script v3: https://script.google.com/macros/s/AKfycbxzmbB7FQIUPNTKP65jcfQdWtYNJVW0Xb988PZccRvkjBS14c8jh1gBXo26qzEwRbqH3w/exec
 - ใช้ GET + URL params (action, data)
 
 ## Completed Features (as of 2026-02-14)
