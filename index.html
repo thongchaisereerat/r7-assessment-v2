@@ -464,6 +464,8 @@ function showPage(id){
   if(CU&&CU.role==='regional'&&CU.province&&id==='pageDashboard'){
     const fp=document.getElementById('fProv');if(fp&&CU.province){fp.value=CU.province;refreshDash();}
   }
+  if(id==='pageDashboard')refreshDash();
+  if(id==='pageMyDashboard'&&CH){loadMyDash(CH.code);}
   window.scrollTo(0,0);
 }
 
