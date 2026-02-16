@@ -232,7 +232,7 @@
 <div id="pageAssessment" data-testid="page-assessment" class="hidden container mx-auto px-4 py-6 fade-in">
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
 <div class="flex justify-between items-center mb-4">
-<h3 class="text-lg font-bold text-gray-800">แบบประเมินมาตรฐานการเงินการคลัง</h3>
+<div><h3 class="text-lg font-bold text-gray-800">แบบประเมินมาตรฐานการเงินการคลัง</h3><div id="aHospName" class="text-sm text-gray-500"></div></div>
 <button onclick="showPage('pageMyDashboard')" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
@@ -243,6 +243,7 @@
 </div>
 <!-- Category progress summary -->
 <div id="aCatProg" class="flex flex-wrap gap-2 mb-4 text-xs"></div>
+<div id="editBanner" class="mb-4"></div>
 <div id="autoSaveMsg" data-testid="autosave-msg" class="text-xs text-gray-400 mb-4"></div>
 <div id="aItems" data-testid="assessment-items"></div>
 <div class="mt-6 flex flex-col items-center gap-3">
@@ -1087,7 +1088,7 @@ async function loadMyDash(code){
       const delta=(wp!=='-'&&prevWp!==null)?Number((Number(wp)-prevWp).toFixed(1)):null;
       const deltaStr=delta!==null?(delta>0?'<span class="text-emerald-600 font-bold">↑+'+delta+'</span>':delta<0?'<span class="text-red-600 font-bold">↓'+delta+'</span>':'<span class="text-gray-400">—</span>'):'<span class="text-gray-300">—</span>';
       const pass=wp!=='-'&&Number(wp)>=80?'<span class="text-emerald-600">✔</span>':'<span class="text-red-500">✘</span>';
-      return `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="p-2 font-medium">${s.round||'-'}</td><td class="p-2 text-center font-bold">${wp}</td><td class="p-2 text-center">${deltaStr}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${gradeClass(s.grade)}">${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">${pass}</td><td class="p-2 text-center">${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center">${isSubmitted?'<button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs">รายงาน</button>':'<button onclick="editAssess(\''+s.round+'\')" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt(\''+s.round+'\')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button>'}</td></tr>`;
+      return `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="p-2 font-medium">${s.round||'-'}</td><td class="p-2 text-center font-bold">${wp}</td><td class="p-2 text-center">${deltaStr}</td><td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${gradeClass(s.grade)}">${gradeLabel(s.grade)}</span></td><td class="p-2 text-center">${pass}</td><td class="p-2 text-center">${isSubmitted?'<span class="submitted-badge">ส่งแล้ว</span>':'<span class="draft-badge">ร่าง</span>'}</td><td class="p-2 text-center"><button onclick="editAssess('${s.round}')" class="text-indigo-600 hover:underline text-xs">แก้ไข</button> <button onclick="viewRpt('${s.round}')" class="text-emerald-600 hover:underline text-xs ml-1">รายงาน</button></td></tr>`;
     }).join('')}</tbody></table>`;
   }else{document.getElementById('mHist').innerHTML='<p class="text-gray-400 text-xs">ยังไม่มีประวัติ</p>';}
 
@@ -1112,7 +1113,10 @@ function startOrResume(){
   const now=new Date();const by=now.getFullYear()+543;
   const cr=(now.getMonth()<6?'1/':'2/')+by;
   _rd=null;
+  document.getElementById('editBanner').innerHTML='';
+  document.getElementById('aHospName').textContent=CH?(CH.name+' ('+CH.code+')'+' — ระดับ '+CH.level):'';
   document.getElementById('aRound').value=cr;
+  document.getElementById('aRound').disabled=false;
   document.getElementById('aDate').value=now.toISOString().split('T')[0];
   cat4Sel.clear();
   // Try to restore draft (ISS-003: prompt user)
@@ -1133,30 +1137,46 @@ function startOrResume(){
   updLive();showPage('pageAssessment');
 }
 function startAssess(){startOrResume();}
-function editAssess(round){
+async function editAssess(round){
   if(!CU||CU.role==='regional'){alert('คุณไม่มีสิทธิ์แก้ไขแบบประเมิน');return;}
-  // Check submit state
-  if(CH){
-    const st=lg('r7_status_'+CH.code+'_'+round);
-    if(st&&st.status==='submitted'){alert('การประเมินนี้ส่งแล้ว ต้องขอ Admin ปลดล็อคก่อนแก้ไข');return;}
-  }
-  _rd=round;document.getElementById('aRound').value=round;document.getElementById('aDate').value=new Date().toISOString().split('T')[0];
+  if(!CH){alert('ไม่พบข้อมูลโรงพยาบาล');return;}
+  _rd=round;
+  document.getElementById('aHospName').textContent=CH.name+' ('+CH.code+')'+' — ระดับ '+CH.level;
+  document.getElementById('aRound').value=round;
+  document.getElementById('aRound').disabled=true;
+  document.getElementById('aDate').value=new Date().toISOString().split('T')[0];
   cat4Sel.clear();
-  if(CH){
-    const draft=lg('r7_draft_'+CH.code+'_'+round);
-    const saved=lg('r7_scores_'+CH.code+'_'+round);
-    const src=draft||saved;
-    if(src){restoreCat4(src);}
+  // Priority: draft > local saved > server
+  const draft=lg('r7_draft_'+CH.code+'_'+round);
+  const saved=lg('r7_scores_'+CH.code+'_'+round);
+  let src=draft||saved||null;
+  if(!src){
+    // Fetch from server
+    showLoad('กำลังโหลดข้อมูลการประเมิน...');
+    try{
+      const sr=await gAPI('getScores',{hospital_code:String(CH.code)});
+      if(sr.success&&sr.scores){
+        const match=sr.scores.find(s=>normRound(s.round)===round);
+        if(match){
+          // Convert server format (item_X_Y) to form format (i_X_Y)
+          src={round:round,date:match.date||match.submitted_at||''};
+          EC.forEach(it=>{const k=ik(it.c);if(match['item_'+k]!==undefined&&match['item_'+k]!=='')src['i_'+k]=String(match['item_'+k]);});
+        }
+      }
+    }catch(e){}
+    hideLoad();
   }
+  if(src){restoreCat4(src);}
   renderItems();
-  if(CH){
-    const draft=lg('r7_draft_'+CH.code+'_'+round);
-    const saved=lg('r7_scores_'+CH.code+'_'+round);
-    const src=draft||saved;
-    if(src){EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&src['i_'+k]!==undefined&&src['i_'+k]!=='')el.value=src['i_'+k];});if(src.date)document.getElementById('aDate').value=src.date;}
+  if(src){
+    EC.forEach(it=>{const k=ik(it.c),el=document.getElementById('sc_'+k);if(el&&src['i_'+k]!==undefined&&src['i_'+k]!=='')el.value=src['i_'+k];});
+    if(src.date){const d=src.date.split('T')[0];if(d)document.getElementById('aDate').value=d;}
     updAllBtnStates();updCat4UI();
   }
-  updLive();showPage('pageAssessment');
+  updLive();
+  // Show editing indicator
+  document.getElementById('editBanner').innerHTML='<div class="bg-amber-50 border border-amber-300 rounded-lg p-3 text-center text-sm text-amber-800 font-medium">&#9998; กำลังแก้ไขการประเมินรอบ <b>'+round+'</b> — บันทึกแล้วจะอัพเดททับข้อมูลเดิม</div>';
+  showPage('pageAssessment');
 }
 function loadDraft(){
   const rnd=document.getElementById('aRound').value;
