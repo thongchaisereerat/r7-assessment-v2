@@ -685,6 +685,12 @@ function getLS(scores,rnd){
   });
   return m;
 }
+// Get item-level cached data: try localStorage first, fallback to server record
+function getItemCached(code,round,sRec){
+  let c=lg('r7_scores_'+code+'_'+round);
+  if(!c&&sRec&&sRec['item_1_1']!==undefined){c={round:round||''};EC.forEach(it=>{const k=ik(it.c);if(sRec['item_'+k]!==undefined)c['i_'+k]=String(sRec['item_'+k]);});}
+  return c;
+}
 
 // ==================== DYNAMIC ROUNDS ====================
 function buildRounds(){
@@ -754,7 +760,7 @@ async function init(){
         sc.round=normRound(sc.round);
         const hp=AH.find(x=>String(x.code)===String(sc.hospital_code));
         const level=hp?hp.level:'';
-        const cached=lg('r7_scores_'+sc.hospital_code+'_'+sc.round);
+        const cached=getItemCached(sc.hospital_code,sc.round,sc);
         if(cached){
           const cs=calcCatScores(cached,level);
           sc.wpct=cs.wpct;sc.grade=cs.grade;sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;
@@ -861,7 +867,7 @@ function refreshDash(){
       const g=s.grade||gradeFromPct(wp);
       if(g==='A')cA++;else if(g==='B')cB++;else if(g==='C')cC++;else cD++;
       tot+=wp;cnt++;allWpcts.push(wp);
-      const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+      const cached=getItemCached(h.code,s.round||'',s);
       if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{catSums[i]+=c.pct;});catCnt++;}
     }else{
       missingHosps.push(h);
@@ -934,7 +940,7 @@ function refreshDash(){
     const prevWp=ps?Number(ps.wpct||0):null;
     const delta=(prevWp!==null&&wp>0)?(wp-prevWp):null;
     let catPcts=[0,0,0,0,0,0];
-    const cached=s?lg('r7_scores_'+h.code+'_'+(s.round||'')):null;
+    const cached=s?getItemCached(h.code,s.round||'',s):null;
     if(cached){const cs=calcCatScores(cached,h.level);catPcts=cs.categories.map(c=>c.pct);}
     return{code:h.code,name:h.name,province:h.province,level:h.level||'-',wpct:wp,grade:g,delta,catPcts};
   });
@@ -1013,7 +1019,7 @@ function mkProvCompare(allHosp,scoreMap,rn){
     pvH.forEach(h=>{
       const s=scoreMap[String(h.code)];
       if(!s)return;
-      const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+      const cached=getItemCached(h.code,s.round||'',s);
       if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{catAvgs[i]+=c.pct;});cnt++;}
     });
     return{label:pv,data:cnt>0?catAvgs.map(s=>Math.round(s/cnt)):[0,0,0,0,0,0],backgroundColor:PROV_COLORS[pi]+'40',borderColor:PROV_COLORS[pi],borderWidth:1.5};
@@ -1277,7 +1283,7 @@ async function loadMyDash(code){
 
   if(la){
     // Recalculate with cached data
-    const cached=lg('r7_scores_'+codeStr+'_'+la.round);
+    const cached=getItemCached(codeStr,la.round,la);
     let wp,g;
     if(cached){
       const cs=calcCatScores(cached,CH.level);
@@ -1694,7 +1700,8 @@ function showReport(d,cs,dm,serverOk){
 
 function viewRpt(round){
   if(!CH)return;
-  const c=lg('r7_scores_'+CH.code+'_'+round);
+  const sRec=AS.find(s=>String(s.hospital_code)===String(CH.code)&&s.round===round);
+  const c=getItemCached(CH.code,round,sRec);
   if(c){c.round=round;const cs=calcCatScores(c,CH.level);const dm=calcDims(c,CH.level);showReport(c,cs,dm);}
   else{alert('ไม่พบข้อมูลรายข้อ กรุณาแก้ไขเพื่อเก็บข้อมูลก่อน');}
 }
@@ -1741,7 +1748,7 @@ function exportDashExcel(){
   // Data rows
   fh.forEach((h,idx)=>{
     const s=lm[String(h.code)]||{};
-    const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+    const cached=getItemCached(h.code,s.round||'',s);
     const row=[idx+1,h.code,h.name,h.province,h.level||'-',s.round||rn||'-',
       s.wpct!=null?Number(Number(s.wpct).toFixed(1)):'-',
       s.grade?gradeLabel(s.grade)+' ('+s.grade+')':'-',
@@ -1766,7 +1773,7 @@ function exportDashExcel(){
   aoa2.push(hdr2);
   fh.forEach(h=>{
     const s=lm[String(h.code)]||{};
-    const cached=lg('r7_scores_'+h.code+'_'+(s.round||''));
+    const cached=getItemCached(h.code,s.round||'',s);
     const row2=[h.code,h.name,h.province,s.wpct!=null?Number(Number(s.wpct).toFixed(1)):'-',s.grade||'-'];
     if(cached){EC.forEach(it=>{const v=cached['i_'+ik(it.c)];row2.push(v==='NA'?'N/A':(v!==undefined&&v!==''?Number(v):'-'));});}
     else{EC.forEach(()=>{row2.push('-');});}
@@ -1802,7 +1809,7 @@ function exportMyExcel(){
   aoa.push(['คะแนนรายข้อ (รอบล่าสุด)']);
   const latestRound=hs[0];
   if(latestRound){
-    const cached=lg('r7_scores_'+codeStr+'_'+latestRound.round);
+    const cached=getItemCached(codeStr,latestRound.round,latestRound);
     aoa.push(['ข้อ','หัวข้อ','หมวด','คะแนน','คะแนนเต็ม']);
     if(cached){
       EC.forEach(it=>{
