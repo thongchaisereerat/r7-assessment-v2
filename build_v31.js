@@ -69,6 +69,7 @@ const html = `<!DOCTYPE html>
 .tab-btn{padding:8px 16px;border-radius:10px 10px 0 0;background:transparent;border:none;color:#6b7280;font-weight:600;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s}
 .tab-btn:hover{color:#4338ca;background:#eef2ff}
 .tab-btn.active{color:#4338ca;border-bottom-color:#4338ca;background:#eef2ff}
+.tab-nav{background:#fff;border:1px solid #e5e7eb;border-bottom:0;border-radius:14px 14px 0 0;padding:6px 8px 0;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:-1px;position:sticky;top:60px;z-index:25;box-shadow:0 1px 0 rgba(0,0,0,0)}
 .weak-cat-chip{display:inline-block;padding:2px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600}
 </style>
 </head>
@@ -135,12 +136,23 @@ const html = `<!DOCTYPE html>
 <div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-40"></div>
 <div><label class="text-gray-500 text-xs block mb-1">เรียงตาม</label><select id="fSort" onchange="doSortSelect()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="wpct">คะแนน (สูง&#8594;ต่ำ)</option><option value="wpct_asc">คะแนน (ต่ำ&#8594;สูง)</option><option value="name">ชื่อ รพ. (ก-ฮ)</option><option value="code">รหัส รพ.</option><option value="province">จังหวัด</option><option value="level">ระดับ รพ. (รพศ&#8594;รพช)</option><option value="grade">เกรด (A&#8594;D)</option><option value="delta">การเปลี่ยนแปลง (&Delta;)</option></select></div>
 <div class="ml-auto flex gap-2">
-<button id="btnShowMissing" onclick="toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
+<button id="btnShowMissing" onclick="switchTab('monitor');toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
 <button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
 <button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">&#128190; Download Excel</button>
 </div>
 </div>
 </div>
+
+<!-- ===== TAB NAVIGATION ===== -->
+<div class="tab-nav" role="tablist" aria-label="Dashboard tabs">
+<button class="tab-btn active" data-testid="tab-dashboard" role="tab" aria-selected="true" onclick="switchTab('dashboard')">&#128202; ภาพรวม</button>
+<button class="tab-btn" data-testid="tab-monitor" role="tab" aria-selected="false" onclick="switchTab('monitor')">&#128203; ติดตามการส่ง</button>
+<button class="tab-btn" data-testid="tab-hospital" role="tab" aria-selected="false" onclick="switchTab('hospital')">&#127973; รายชื่อ รพ.</button>
+<button class="tab-btn" data-testid="tab-compare" role="tab" aria-selected="false" onclick="switchTab('compare')">&#9878; เปรียบเทียบ</button>
+</div>
+
+<!-- ===== TAB PANE: DASHBOARD ===== -->
+<div id="tabPaneDashboard" class="tab-pane" role="tabpanel" aria-labelledby="tab-dashboard">
 
 <!-- ===== KPI STRIP (4 cards) ===== -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -266,6 +278,18 @@ const html = `<!DOCTYPE html>
 </div>
 </div>
 
+</div><!-- /tabPaneDashboard -->
+
+<!-- ===== TAB PANE: MONITOR ===== -->
+<div id="tabPaneMonitor" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-monitor">
+
+<!-- Submission progress (compact) -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+<div class="flex items-center justify-between mb-3 flex-wrap gap-2"><h3 class="font-bold text-gray-700 text-sm">&#128202; ความครอบคลุมการส่งประเมินรอบนี้</h3><span id="subDetail2" class="text-xs font-medium text-gray-600">-</span></div>
+<div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden"><div id="subBar2" class="h-3 rounded-full bg-emerald-500 transition-all duration-500" style="width:0%"></div></div>
+<div id="subProvList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-4"></div>
+</div>
+
 <!-- Missing hospitals (expandable, kept) -->
 <div id="missingSection" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
 <div class="flex justify-between items-center mb-2">
@@ -275,12 +299,13 @@ const html = `<!DOCTYPE html>
 <div id="missingList" class="text-xs"></div>
 </div>
 
-<!-- Submission progress (compact) -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-5">
-<div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-gray-700">&#128202; ความครอบคลุมการส่งประเมิน</span><span id="subDetail" class="text-xs font-medium text-gray-600">-</span></div>
-<div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden"><div id="subBar" class="h-2.5 rounded-full bg-emerald-500 transition-all duration-500" style="width:0%"></div></div>
-<div class="hidden"><span id="subPctBig">-</span><span id="subCountSmall">-</span><span id="sumSub">-</span></div>
-</div>
+<!-- Hidden compatibility shells for refreshDash legacy IDs (preserved) -->
+<div class="hidden"><span id="subDetail">-</span><div id="subBar"></div><span id="subPctBig">-</span><span id="subCountSmall">-</span><span id="sumSub">-</span></div>
+
+</div><!-- /tabPaneMonitor -->
+
+<!-- ===== TAB PANE: HOSPITAL ===== -->
+<div id="tabPaneHospital" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-hospital">
 
 <!-- Hospital Table -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-5">
@@ -299,6 +324,55 @@ const html = `<!DOCTYPE html>
 <th class="p-1 text-center text-xs" style="width:38px" title="หมวด 6: ควบคุมรายจ่าย (25)">คจ.</th>
 </tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="11" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
 </div>
+
+</div><!-- /tabPaneHospital -->
+
+<!-- ===== TAB PANE: COMPARE ===== -->
+<div id="tabPaneCompare" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-compare">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+<div class="flex items-start gap-3 flex-wrap">
+<div class="text-indigo-500 text-lg">&#9878;</div>
+<div class="flex-1 min-w-[240px]">
+<h3 class="font-bold text-gray-700 text-sm">เปรียบเทียบ 2 รพ. หรือ 2 รอบ</h3>
+<p class="text-xs text-gray-500 mt-0.5">เลือก รพ. + รอบทั้งสองฝั่ง ระบบจะแสดงคะแนน เกรด และความต่างรายหมวด</p>
+</div>
+<div class="flex gap-2 ml-auto">
+<button onclick="cmpPreset('round')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold transition">&#128257; รพ.เดียวกัน 2 รอบ</button>
+<button onclick="cmpPreset('clear')" class="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg font-semibold transition">&#10005; ล้าง</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+<!-- Card A -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center">A</span><span class="text-sm font-semibold text-gray-700">ฝั่งที่ 1</span></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+<select id="cmpHospA" data-testid="compare-hosp-a" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; เลือก รพ. &mdash;</option></select>
+<select id="cmpRoundA" data-testid="compare-round-a" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; รอบ &mdash;</option></select>
+</div>
+<div id="cmpCardA" class="text-sm text-gray-400">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>
+</div>
+<!-- Card B -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm flex items-center justify-center">B</span><span class="text-sm font-semibold text-gray-700">ฝั่งที่ 2</span></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+<select id="cmpHospB" data-testid="compare-hosp-b" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; เลือก รพ. &mdash;</option></select>
+<select id="cmpRoundB" data-testid="compare-round-b" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; รอบ &mdash;</option></select>
+</div>
+<div id="cmpCardB" class="text-sm text-gray-400">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>
+</div>
+</div>
+<!-- Side-by-side category comparison -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+<h3 class="font-bold text-gray-700 mb-3 text-sm">&#128202; เปรียบเทียบรายหมวด</h3>
+<div id="cmpDeltaTable" class="overflow-x-auto text-sm text-gray-400">เลือกข้อมูลทั้งสองฝั่งเพื่อเปรียบเทียบ</div>
+</div>
+<!-- Radar overlay -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<h3 class="font-bold text-gray-700 mb-2 text-sm">&#128203; Radar 6 หมวด (A vs B)</h3>
+<div style="position:relative;height:300px"><canvas id="cCmpRadar"></canvas></div>
+</div>
+</div><!-- /tabPaneCompare -->
 
 <!-- Footer -->
 <div class="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
@@ -1038,13 +1112,30 @@ function refreshDash(){
   const deltaAvg=prevAvg!==null?(avg-prevAvg):null;
   // KPI strip (v5.0)
   renderKPIStrip({subPct,submitted,fhLen:fh.length,notSub:notSubmitted,cnt,avg,prevAvg,deltaAvg,pass:passCnt,watchHosps,gA:cA,gB:cB,gC:cC,gD:cD});
-  // Submission tracking
-  document.getElementById('subPctBig').textContent=subPct;
-  document.getElementById('subCountSmall').textContent=submitted+'/'+fh.length;
-  document.getElementById('subDetail').textContent='ส่งแล้ว '+submitted+' | ยังไม่ส่ง '+notSubmitted+' จาก '+fh.length+' รพ.';
+  // Submission tracking (legacy compat IDs)
+  const subPctBig=document.getElementById('subPctBig');if(subPctBig)subPctBig.textContent=subPct;
+  const subCountSmall=document.getElementById('subCountSmall');if(subCountSmall)subCountSmall.textContent=submitted+'/'+fh.length;
+  const subDetail=document.getElementById('subDetail');if(subDetail)subDetail.textContent='ส่งแล้ว '+submitted+' | ยังไม่ส่ง '+notSubmitted+' จาก '+fh.length+' รพ.';
   const subBarEl=document.getElementById('subBar');
-  subBarEl.style.width=subPct+'%';
-  subBarEl.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';
+  if(subBarEl){subBarEl.style.width=subPct+'%';subBarEl.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';}
+  // Monitor tab: visible submission tracker
+  const sb2=document.getElementById('subBar2'),sd2=document.getElementById('subDetail2');
+  if(sb2){sb2.style.width=subPct+'%';sb2.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';}
+  if(sd2)sd2.textContent='ส่งแล้ว '+submitted+'/'+fh.length+' ('+subPct+'%) | ยังไม่ส่ง '+notSubmitted+' รพ.';
+  const slEl=document.getElementById('subProvList');
+  if(slEl){
+    const pvList=pv?[pv]:PROVS;
+    slEl.innerHTML=pvList.map(prov=>{
+      const pvH=AH.filter(h=>h.province===prov);
+      if(!pvH.length)return '';
+      let pSub=0;const pNotList=[];pvH.forEach(h=>{if(lm[String(h.code)])pSub++;else pNotList.push(h);});
+      const pTot=pvH.length,pNot=pTot-pSub;
+      const pPct=pTot>0?Math.round(pSub/pTot*100):0;
+      const color=pPct>=80?'#10b981':pPct>=50?'#f59e0b':'#ef4444';
+      const tip=pNotList.length?'\\n\\nยังไม่ส่ง:\\n'+pNotList.map(h=>'• '+h.name).join('\\n'):'';
+      return '<div class="bg-gray-50 rounded-lg border border-gray-100 p-3" title="'+esc(prov+' — ส่งแล้ว '+pSub+'/'+pTot+tip)+'"><div class="flex justify-between items-center mb-1"><span class="font-semibold text-sm text-gray-700">'+esc(prov)+'</span><span class="text-xs font-bold" style="color:'+color+'">'+pPct+'%</span></div><div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2"><div class="h-2 rounded-full transition-all" style="width:'+pPct+'%;background:'+color+'"></div></div><div class="text-xs text-gray-500">ส่งแล้ว '+pSub+'/'+pTot+(pNot>0?' &middot; <span class="text-red-600 font-semibold">ยังไม่ส่ง '+pNot+'</span>':'')+'</div></div>';
+    }).join('');
+  }
   // Missing hospitals button + list
   const btnMissing=document.getElementById('btnShowMissing');
   const missingCountEl=document.getElementById('missingCount');
@@ -1141,6 +1232,125 @@ function filterByGrade(g){_gradeFilter=(_gradeFilter===g)?'':g;refreshDash();}
 function clearGradeFilter(){_gradeFilter='';refreshDash();}
 function toggleMissing(){const s=document.getElementById('missingSection');s.classList.toggle('hidden');}
 function toggleMethodBox(){const b=document.getElementById('methodologyBox');b.classList.toggle('hidden');ls('r7_methodBox_hidden',b.classList.contains('hidden'));}
+
+// ==================== TABS (v5.0 Phase 2) ====================
+let chCmpRadar=null;
+function switchTab(name){
+  const TABS=['dashboard','monitor','hospital','compare'];
+  if(TABS.indexOf(name)<0)return;
+  TABS.forEach(t=>{
+    const cap=t.charAt(0).toUpperCase()+t.slice(1);
+    const pane=document.getElementById('tabPane'+cap);
+    if(pane)pane.classList.toggle('hidden',t!==name);
+    const btn=document.querySelector('[data-testid="tab-'+t+'"]');
+    if(btn){btn.classList.toggle('active',t===name);btn.setAttribute('aria-selected',t===name?'true':'false');}
+  });
+  if(name==='compare')renderCompareTab();
+}
+function renderCompareTab(){
+  const hA=document.getElementById('cmpHospA'),hB=document.getElementById('cmpHospB');
+  const rA=document.getElementById('cmpRoundA'),rB=document.getElementById('cmpRoundB');
+  if(!hA||!hB||!rA||!rB)return;
+  const hopt='<option value="">— เลือก รพ. —</option>'+AH.slice().sort((x,y)=>{const pi=PROVS.indexOf(x.province)-PROVS.indexOf(y.province);return pi||x.name.localeCompare(y.name,'th');}).map(h=>'<option value="'+h.code+'">'+esc(h.name)+' ('+esc(h.province||'')+')</option>').join('');
+  const prevA=hA.value,prevB=hB.value;
+  hA.innerHTML=hopt;hB.innerHTML=hopt;
+  if(prevA)hA.value=prevA;if(prevB)hB.value=prevB;
+  const rounds=getAvailableRounds();
+  const ropt='<option value="">— รอบ —</option>'+rounds.map(r=>'<option value="'+r+'">รอบ '+esc(r)+'</option>').join('');
+  const prevRA=rA.value,prevRB=rB.value;
+  rA.innerHTML=ropt;rB.innerHTML=ropt;
+  if(prevRA)rA.value=prevRA;if(prevRB)rB.value=prevRB;
+  // First-time defaults: same hospital, prev round vs current round
+  if(!hA.value&&!hB.value&&AH.length){
+    const code=String(AH[0].code);hA.value=code;hB.value=code;
+  }
+  if(!rA.value&&!rB.value){
+    const cur=document.getElementById('fRnd').value;const prev=getPrevRound(cur);
+    if(prev&&rounds.indexOf(prev)>=0)rA.value=prev;
+    if(cur&&rounds.indexOf(cur)>=0)rB.value=cur;
+  }
+  renderCompare();
+}
+function cmpPreset(mode){
+  if(mode==='clear'){
+    ['cmpHospA','cmpRoundA','cmpHospB','cmpRoundB'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    if(chCmpRadar){chCmpRadar.destroy();chCmpRadar=null;}
+    renderCompare();return;
+  }
+  if(mode==='round'){
+    const code=document.getElementById('cmpHospA').value||document.getElementById('cmpHospB').value||(AH[0]?String(AH[0].code):'');
+    const curRn=document.getElementById('fRnd').value;const prevRn=getPrevRound(curRn);
+    document.getElementById('cmpHospA').value=code;document.getElementById('cmpHospB').value=code;
+    if(prevRn)document.getElementById('cmpRoundA').value=prevRn;
+    if(curRn)document.getElementById('cmpRoundB').value=curRn;
+    renderCompare();
+  }
+}
+function renderCompare(){
+  const buildSide=(hospEl,rnEl,cardEl)=>{
+    if(!hospEl||!rnEl||!cardEl)return null;
+    const code=hospEl.value,rn=rnEl.value;
+    if(!code||!rn){cardEl.innerHTML='<div class="text-gray-400 text-xs">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>';return null;}
+    const hp=AH.find(h=>String(h.code)===String(code));
+    const sc=AS.find(s=>String(s.hospital_code)===String(code)&&s.round===rn);
+    if(!sc){cardEl.innerHTML='<div class="text-amber-600 text-xs">&#9888; ไม่พบข้อมูลรอบนี้สำหรับ รพ.นี้</div>';return null;}
+    const wp=Number(sc.wpct||0);const g=sc.grade||gradeFromPct(wp);
+    const cached=getItemCached(code,rn,sc);
+    const cats=cached?calcCatScores(cached,hp?hp.level:'').categories:null;
+    const gradeBg=g==='A'?'bg-emerald-100 text-emerald-700':g==='B'?'bg-blue-100 text-blue-700':g==='C'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700';
+    let h='<div class="flex justify-between items-start gap-2 mb-2"><div class="min-w-0 flex-1"><div class="font-bold text-gray-800 text-sm truncate">'+esc(hp?hp.name:code)+'</div><div class="text-xs text-gray-500">'+esc((hp&&hp.province)||'')+' &middot; ระดับ '+esc((hp&&hp.level)||'-')+' &middot; รอบ '+esc(rn)+'</div></div><div class="text-right"><div class="num text-2xl font-black text-indigo-600">'+wp.toFixed(1)+'<span class="text-base">%</span></div><span class="inline-block mt-0.5 px-2 py-0.5 rounded text-xs font-bold '+gradeBg+'">เกรด '+g+'</span></div></div>';
+    if(cats){
+      h+='<div class="space-y-1.5 mt-2">';
+      cats.forEach((c,i)=>{
+        const pct=Math.round(c.pct);
+        const color=pct>=90?'#10b981':pct>=80?'#3b82f6':pct>=70?'#f59e0b':'#ef4444';
+        const labelTxt=(typeof CAT_LABELS!=='undefined'&&CAT_LABELS[i])?CAT_LABELS[i]:(typeof CATS!=='undefined'&&CATS[i]&&CATS[i].sn)?CATS[i].sn:'';
+        h+='<div><div class="flex justify-between text-xs mb-0.5"><span class="text-gray-600">หมวด '+(i+1)+': '+esc(labelTxt)+'</span><span class="font-bold text-gray-700">'+pct+'%</span></div><div class="bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full" style="width:'+pct+'%;background:'+color+'"></div></div></div>';
+      });
+      h+='</div>';
+    }else{
+      h+='<div class="text-xs text-gray-400 mt-2">ไม่มีรายละเอียดรายหมวด</div>';
+    }
+    cardEl.innerHTML=h;
+    return {wp:wp,cats:cats,sc:sc,hp:hp,rn:rn,g:g};
+  };
+  const A=buildSide(document.getElementById('cmpHospA'),document.getElementById('cmpRoundA'),document.getElementById('cmpCardA'));
+  const B=buildSide(document.getElementById('cmpHospB'),document.getElementById('cmpRoundB'),document.getElementById('cmpCardB'));
+  const dt=document.getElementById('cmpDeltaTable');if(!dt)return;
+  if(!A||!B){
+    dt.innerHTML='<div class="text-gray-400 text-xs p-2">เลือกข้อมูลทั้งสองฝั่งเพื่อเปรียบเทียบ</div>';
+    if(chCmpRadar){chCmpRadar.destroy();chCmpRadar=null;}
+    return;
+  }
+  const dWp=B.wp-A.wp;
+  const dColor=dWp>0.05?'text-emerald-600':dWp<-0.05?'text-red-600':'text-gray-500';
+  const dArrow=dWp>0.05?'&#9650;':dWp<-0.05?'&#9660;':'&#9135;';
+  let html='<table class="w-full text-sm"><thead class="bg-gray-50 text-xs text-gray-600"><tr><th class="p-2 text-left">หมวด</th><th class="p-2 text-right">A</th><th class="p-2 text-right">B</th><th class="p-2 text-right">&Delta; (B−A)</th></tr></thead><tbody>';
+  html+='<tr class="bg-indigo-50 font-bold"><td class="p-2">คะแนนรวม</td><td class="p-2 text-right">'+A.wp.toFixed(1)+'%</td><td class="p-2 text-right">'+B.wp.toFixed(1)+'%</td><td class="p-2 text-right '+dColor+'">'+dArrow+' '+(dWp>0?'+':'')+dWp.toFixed(1)+'</td></tr>';
+  if(A.cats&&B.cats){
+    A.cats.forEach((c,i)=>{
+      const aPct=Math.round(c.pct),bPct=Math.round(B.cats[i].pct);
+      const d=bPct-aPct;
+      const dc=d>0?'text-emerald-600':d<0?'text-red-600':'text-gray-500';
+      const da=d>0?'&#9650;':d<0?'&#9660;':'&#9135;';
+      const labelTxt=(typeof CAT_LABELS!=='undefined'&&CAT_LABELS[i])?CAT_LABELS[i]:(typeof CATS!=='undefined'&&CATS[i]&&CATS[i].sn)?CATS[i].sn:'';
+      html+='<tr class="border-t"><td class="p-2 text-gray-700">'+(i+1)+'. '+esc(labelTxt)+'</td><td class="p-2 text-right">'+aPct+'%</td><td class="p-2 text-right">'+bPct+'%</td><td class="p-2 text-right font-semibold '+dc+'">'+da+' '+(d>0?'+':'')+d+'</td></tr>';
+    });
+  }
+  html+='</tbody></table>';
+  dt.innerHTML=html;
+  // Radar overlay A vs B
+  const cv=document.getElementById('cCmpRadar');
+  if(cv&&A.cats&&B.cats&&typeof Chart!=='undefined'){
+    const ctx=cv.getContext('2d');
+    if(chCmpRadar)chCmpRadar.destroy();
+    const labels=(typeof CAT_LABELS!=='undefined')?CAT_LABELS:['1','2','3','4','5','6'];
+    chCmpRadar=new Chart(ctx,{type:'radar',data:{labels:labels,datasets:[
+      {label:'A',data:A.cats.map(c=>Math.round(c.pct)),backgroundColor:'rgba(79,70,229,0.15)',borderColor:'rgba(79,70,229,0.9)',borderWidth:2,pointBackgroundColor:'rgba(79,70,229,1)',pointRadius:4},
+      {label:'B',data:B.cats.map(c=>Math.round(c.pct)),backgroundColor:'rgba(16,185,129,0.15)',borderColor:'rgba(16,185,129,0.9)',borderWidth:2,pointBackgroundColor:'rgba(16,185,129,1)',pointRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},pointLabels:{font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}}}});
+  }
+}
 
 // ==================== CHARTS ====================
 function mkRadar6(id,vn,vals){
