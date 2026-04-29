@@ -846,11 +846,17 @@ function showPage(id){
 
 // ==================== API ====================
 async function gAPI(a,p={}){
+  // Apps Script cold-start can exceed 15s; allow 30s + 1 retry to avoid losing the latest round.
   const u=new URL(API);u.searchParams.append('action',a);
   for(let k in p)u.searchParams.append(k,p[k]);
-  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),15000);
-  try{const r=await(await fetch(u,{signal:ac.signal})).json();clearTimeout(t);return r;}
-  catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
+  async function once(ms){
+    const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);
+    try{const r=await(await fetch(u,{signal:ac.signal})).json();clearTimeout(t);return r;}
+    catch(e){clearTimeout(t);return{success:false,error:e.name==='AbortError'?'Request timeout':e.message};}
+  }
+  let r=await once(30000);
+  if(!r||!r.success)r=await once(30000);
+  return r;
 }
 async function pAPI(d){
   // Server reads action + data from URL params (not POST body)
@@ -996,8 +1002,18 @@ async function init(){
       histScores.forEach(s=>{dedup[String(s.hospital_code)+'_'+s.round]=s;});
       apiScores.forEach(s=>{dedup[String(s.hospital_code)+'_'+s.round]=s;});
       AS=Object.values(dedup);
-    }else{AS=histScores;}
-  }catch(e){AS=processHistorical();}
+      // Cache successful API merge so a later cold-start timeout doesn't drop the latest round.
+      try{ls('r7_cache_AS',AS);ls('r7_cache_AS_at',Date.now());}catch(_){}
+    }else{
+      // API failed (timeout/cold-start). Prefer last-known-good cache over embedded HS,
+      // since HS may be older than the latest round on the server.
+      const cached=lg('r7_cache_AS');
+      AS=(Array.isArray(cached)&&cached.length>0)?cached:histScores;
+    }
+  }catch(e){
+    const cached=lg('r7_cache_AS');
+    AS=(Array.isArray(cached)&&cached.length>0)?cached:processHistorical();
+  }
 
   // Store item-level scores from historical data
   HS.forEach(rec=>{
