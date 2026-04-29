@@ -37,10 +37,10 @@
 @keyframes pulse-slow{0%,100%{opacity:.4}50%{opacity:.85}}
 @keyframes pulse-cov{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.45)}50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
 .kpi-cov-pulse{animation:pulse-cov 2s ease-in-out infinite}
-.year-btn{padding:4px 10px;border-radius:8px;background:#fff;border:1px solid #e5e7eb;color:#374151;cursor:pointer;font-weight:700;transition:all .15s}
+.year-btn{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:8px;background:#fff;border:1px solid #e5e7eb;color:#374151;cursor:pointer;font-weight:700;font-size:14px;transition:all .15s}
 .year-btn:hover:not(:disabled){background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
 .year-btn:disabled{opacity:.4;cursor:not-allowed}
-.round-chip{padding:5px 14px;border-radius:9999px;background:#fff;border:1.5px solid #e5e7eb;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.round-chip{padding:10px 18px;min-height:44px;border-radius:9999px;background:#fff;border:1.5px solid #e5e7eb;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
 .round-chip:hover:not(:disabled){background:#eef2ff;border-color:#6366f1;color:#4338ca}
 .round-chip.active{background:linear-gradient(135deg,#6366f1,#4338ca);border-color:#4338ca;color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35)}
 .round-chip:disabled{opacity:.35;cursor:not-allowed;background:#f9fafb;color:#9ca3af}
@@ -58,10 +58,10 @@
 .delta-up{color:#059669;font-weight:700}
 .delta-down{color:#dc2626;font-weight:700}
 .delta-flat{color:#9ca3af;font-weight:600}
-.tab-btn{padding:8px 16px;border-radius:10px 10px 0 0;background:transparent;border:none;color:#6b7280;font-weight:600;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s}
-.tab-btn:hover{color:#4338ca;background:#eef2ff}
-.tab-btn.active{color:#4338ca;border-bottom-color:#4338ca;background:#eef2ff}
-.tab-nav{background:#fff;border:1px solid #e5e7eb;border-bottom:0;border-radius:14px 14px 0 0;padding:6px 8px 0;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:-1px;position:sticky;top:60px;z-index:25;box-shadow:0 1px 0 rgba(0,0,0,0)}
+.tab-btn{padding:12px 24px;min-height:48px;border-radius:9999px;background:transparent;border:none;color:#475569;font-weight:600;font-size:14px;cursor:pointer;transition:all .15s}
+.tab-btn:not(.active):hover{background:#f1f5f9;color:#1e293b}
+.tab-btn.active{background:#4338ca;color:#fff;font-weight:700}
+.tab-nav{position:sticky;top:60px;z-index:25;background:#fff;border-bottom:1px solid #e2e8f0;padding:8px 4px;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 .weak-cat-chip{display:inline-block;padding:2px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600}
 </style>
 </head>
@@ -76,32 +76,33 @@
 <h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="showPage('pageDashboard')">R7 Assessment System v4.3</h1>
 <div class="flex items-center gap-2 flex-wrap">
 <span id="headerUser" class="hidden text-sm opacity-90"></span>
-<button id="btnDashMain" onclick="showPage('pageDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">&#127968; ภาพรวมเขต</button>
-<button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm transition">&#127973; Dashboard รพ.</button>
-<button id="btnLogin" data-testid="btn-login" onclick="showPage('pageLogin')" class="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg text-sm transition">เข้าสู่ระบบ</button>
-<button id="btnLogout" data-testid="btn-logout" onclick="doLogout()" class="hidden bg-red-500/80 hover:bg-red-600 px-3 py-1.5 rounded-lg text-sm transition">ออกจากระบบ</button>
+<button id="btnDashMain" onclick="showPage('pageDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-2.5 min-h-[44px] rounded-lg text-sm transition">&#127968; ภาพรวมเขต</button>
+<button id="btnMyDash" data-testid="btn-my-dash" onclick="showPage('pageMyDashboard')" class="hidden bg-white/20 hover:bg-white/30 px-3 py-2.5 min-h-[44px] rounded-lg text-sm transition">&#127973; Dashboard รพ.</button>
+<button id="btnLogin" data-testid="btn-login" onclick="showPage('pageLogin')" class="bg-white/20 hover:bg-white/30 px-4 py-2.5 min-h-[44px] rounded-lg text-sm transition">เข้าสู่ระบบ</button>
+<button id="btnLogout" data-testid="btn-logout" onclick="doLogout()" class="hidden bg-red-500/80 hover:bg-red-600 px-3 py-2.5 min-h-[44px] rounded-lg text-sm transition">ออกจากระบบ</button>
 </div>
 </div>
 </header>
 
-<!-- INFO BOX: Grade thresholds + formula (persistent on all pages) -->
-<div id="infoBox" data-testid="info-box" class="bg-indigo-50 border-b border-indigo-200 text-xs text-indigo-700 text-center py-1.5 px-4">
-<span class="font-bold">เกณฑ์ระดับ:</span> A &ge;90 | B &ge;80 | C &ge;70 | D &lt;70 &nbsp;&bull;&nbsp;
-<span class="font-bold">คะแนน:</span> คะแนนรวม &divide; คะแนนเต็ม &times; 100 (6 หมวด) &nbsp;&bull;&nbsp;
+<!-- INFO BOX: Grade thresholds + formula (hidden — info now in KPI tooltip; markup retained for tests + a11y screen readers) -->
+<div id="infoBox" data-testid="info-box" class="sr-only" aria-hidden="true">
+<span class="font-bold">เกณฑ์ระดับ:</span> A &ge;90 | B &ge;80 | C &ge;70 | D &lt;70 &bull;
+<span class="font-bold">คะแนน:</span> คะแนนรวม &divide; คะแนนเต็ม &times; 100 (6 หมวด) &bull;
 <span class="font-bold">ผ่านเกณฑ์:</span> &ge;80%
 </div>
 
 <!-- PAGE: PUBLIC DASHBOARD -->
 <div id="pageDashboard" data-testid="page-dashboard" class="container mx-auto px-4 py-6 fade-in" style="max-width:1400px">
 
-<!-- ===== HERO + ROUND SELECTOR ===== -->
-<div id="pptSection" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
-<div class="flex justify-between items-start gap-4 flex-wrap mb-3">
-<div class="flex-1 min-w-[260px]">
+<!-- ===== HERO (compact) ===== -->
+<div id="pptSection" class="bg-white rounded-2xl shadow-sm border border-gray-100 px-5 py-3 mb-3">
 <h2 class="text-xl md:text-2xl font-extrabold text-gray-800">&#128200; ผลการประเมินมาตรฐานการเงินการคลัง</h2>
-<p id="dashSubtitle" class="text-sm text-gray-500 mt-1">กำลังโหลด...</p>
+<p id="dashSubtitle" class="text-sm text-gray-500 mt-0.5">กำลังโหลด...</p>
 </div>
-<div class="flex items-end gap-2 flex-wrap">
+
+<!-- ===== UNIFIED FILTER BAR (พื้นที่ / ปี / รอบ / เทียบ / ค้นหา / เรียง / ปุ่ม) ===== -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 mb-3 flex flex-wrap gap-3 items-end">
+<div><label class="text-gray-500 text-xs block mb-1">พื้นที่</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm min-h-[44px]"><option value="">เขต 7 ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
 <div>
 <label class="text-gray-500 text-xs block mb-1">ปีงบประมาณ</label>
 <div class="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
@@ -114,24 +115,15 @@
 <label class="text-gray-500 text-xs block mb-1">รอบ</label>
 <div id="roundChips" class="flex gap-1.5"></div>
 </div>
-<div>
-<label class="text-gray-500 text-xs block mb-1">เทียบกับ</label>
-<select id="cmpSel" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">รอบก่อนหน้า</option></select>
-</div>
-</div>
-</div>
-<!-- Hidden compatibility select for existing JS (do not remove — used by refreshDash + existing tests) -->
+<div><label class="text-gray-500 text-xs block mb-1">เทียบกับ</label><select id="cmpSel" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm min-h-[44px]"><option value="">รอบก่อนหน้า</option></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-40 min-h-[44px]"></div>
+<div><label class="text-gray-500 text-xs block mb-1">เรียงตาม</label><select id="fSort" onchange="doSortSelect()" class="border border-gray-200 p-2 rounded-lg text-sm min-h-[44px]"><option value="wpct">คะแนน (สูง&#8594;ต่ำ)</option><option value="wpct_asc">คะแนน (ต่ำ&#8594;สูง)</option><option value="name">ชื่อ รพ. (ก-ฮ)</option><option value="code">รหัส รพ.</option><option value="province">จังหวัด</option><option value="level">ระดับ รพ. (รพศ&#8594;รพช)</option><option value="grade">เกรด (A&#8594;D)</option><option value="delta">การเปลี่ยนแปลง (&Delta;)</option></select></div>
+<!-- Hidden compatibility select for existing JS + tests (id=fRnd, testid=filter-round) -->
 <select id="fRnd" data-testid="filter-round" onchange="refreshDash()" class="hidden"></select>
-<!-- Filter row -->
-<div class="flex flex-wrap gap-3 items-end pt-3 border-t border-gray-100">
-<div><label class="text-gray-500 text-xs block mb-1">พื้นที่</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">เขต 7 ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-40"></div>
-<div><label class="text-gray-500 text-xs block mb-1">เรียงตาม</label><select id="fSort" onchange="doSortSelect()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="wpct">คะแนน (สูง&#8594;ต่ำ)</option><option value="wpct_asc">คะแนน (ต่ำ&#8594;สูง)</option><option value="name">ชื่อ รพ. (ก-ฮ)</option><option value="code">รหัส รพ.</option><option value="province">จังหวัด</option><option value="level">ระดับ รพ. (รพศ&#8594;รพช)</option><option value="grade">เกรด (A&#8594;D)</option><option value="delta">การเปลี่ยนแปลง (&Delta;)</option></select></div>
-<div class="ml-auto flex gap-2">
-<button id="btnShowMissing" onclick="switchTab('monitor');toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
-<button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
-<button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">&#128190; Download Excel</button>
-</div>
+<div class="ml-auto flex gap-2 flex-wrap">
+<button id="btnShowMissing" onclick="switchTab('monitor');toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2.5 min-h-[44px] rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
+<button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 min-h-[44px] rounded-lg text-sm transition">Import Excel</button>
+<button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 min-h-[44px] rounded-lg text-sm transition">&#128190; Download Excel</button>
 </div>
 </div>
 
@@ -163,7 +155,7 @@
 <div id="kpiAvgInsight" class="text-xs mt-2 text-indigo-700">-</div>
 </div>
 <!-- Card 3: ผ่านเกณฑ์ — preserves summary-total/grade-a/grade-b testids -->
-<div class="kpi-card bg-white rounded-xl p-4 shadow-sm border-t-4 border-blue-500">
+<div class="kpi-card bg-white rounded-xl p-4 shadow-sm border-t-4 border-blue-500" title="เกณฑ์: A ≥90 | B ≥80 | C ≥70 | D <70 — คะแนน = คะแนนรวม ÷ คะแนนเต็ม × 100 (6 หมวด)">
 <div class="text-xs font-semibold text-gray-500">&#127942; ผ่านเกณฑ์ &ge;80%</div>
 <div class="mt-1 flex items-baseline gap-1"><span id="kpiPassCount" class="num text-3xl md:text-4xl font-black text-blue-600">-</span><span class="text-xl text-gray-400">/</span><span id="sumTotal" data-testid="summary-total" class="num text-2xl font-bold text-gray-500">-</span></div>
 <div class="text-xs text-gray-500 mt-0.5">ผ่าน <span id="kpiPassPct" class="num font-semibold">-</span>%</div>
