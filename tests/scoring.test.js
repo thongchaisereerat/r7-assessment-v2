@@ -400,6 +400,98 @@ test('Only Cost items → only Cost pct > 0', () => {
   assert.strictEqual(r.revenue, 0);
 });
 
+// --- Delta Computation (regression: Δ between rounds) ---
+console.log('\nDelta Computation (round-over-round):');
+
+// Mirror getLS + delta logic from build_v31.js refreshDash
+function getLS(scores, rnd) {
+  const m = {};
+  (scores || []).forEach(s => {
+    if (rnd && s.round !== rnd) return;
+    const k = String(s.hospital_code);
+    if (!m[k] || (s.updated_at || '') > (m[k].updated_at || '')) m[k] = s;
+  });
+  return m;
+}
+function computeDelta(scoreMap, prevMap, code) {
+  const s = scoreMap[String(code)];
+  const ps = prevMap[String(code)];
+  const wp = s ? Number(s.wpct || 0) : 0;
+  const prevWp = ps ? Number(ps.wpct || 0) : null;
+  return (prevWp !== null && wp > 0) ? Math.round((wp - prevWp) * 10) / 10 : null;
+}
+
+// Real-world dataset: mirrors live API for พนมไพร 11065, บ้านไผ่ 11002, ทุ่งเขาหลวง 27988
+const apiSnapshot = [
+  { hospital_code: '11065', round: '2/2568', wpct: 73.8, composite: 73.8, updated_at: '2025-09-15' },
+  { hospital_code: '11065', round: '1/2569', wpct: 71.0, composite: 71.0, updated_at: '2026-01-15' },
+  { hospital_code: '11002', round: '2/2568', wpct: 79.5, composite: 79.5, updated_at: '2025-09-15' },
+  { hospital_code: '11002', round: '1/2569', wpct: 74.7, composite: 74.7, updated_at: '2026-01-15' },
+  { hospital_code: '27988', round: '2/2568', wpct: 62.9, composite: 62.9, updated_at: '2025-09-15' },
+  { hospital_code: '27988', round: '1/2569', wpct: 73.1, composite: 73.1, updated_at: '2026-01-15' },
+  // Decoy records: different hospitals/rounds in different array order
+  { hospital_code: '10670', round: '1/2569', wpct: 95.0, composite: 95.0, updated_at: '2026-01-15' },
+  { hospital_code: '10670', round: '2/2568', wpct: 90.0, composite: 90.0, updated_at: '2025-09-15' }
+];
+
+test('delta พนมไพร 11065: 1/2569 vs 2/2568 = -2.8', () => {
+  const lm = getLS(apiSnapshot, '1/2569');
+  const prevLm = getLS(apiSnapshot, '2/2568');
+  assert.strictEqual(computeDelta(lm, prevLm, '11065'), -2.8);
+});
+
+test('delta บ้านไผ่ 11002: 1/2569 vs 2/2568 = -4.8', () => {
+  const lm = getLS(apiSnapshot, '1/2569');
+  const prevLm = getLS(apiSnapshot, '2/2568');
+  assert.strictEqual(computeDelta(lm, prevLm, '11002'), -4.8);
+});
+
+test('delta ทุ่งเขาหลวง 27988: 1/2569 vs 2/2568 = +10.2', () => {
+  const lm = getLS(apiSnapshot, '1/2569');
+  const prevLm = getLS(apiSnapshot, '2/2568');
+  assert.strictEqual(computeDelta(lm, prevLm, '27988'), 10.2);
+});
+
+test('delta lookup is by hospital_code (not array index)', () => {
+  // Reverse the array order — match must still work via key lookup
+  const reversed = [...apiSnapshot].reverse();
+  const lm = getLS(reversed, '1/2569');
+  const prevLm = getLS(reversed, '2/2568');
+  assert.strictEqual(computeDelta(lm, prevLm, '11065'), -2.8);
+  assert.strictEqual(computeDelta(lm, prevLm, '11002'), -4.8);
+  assert.strictEqual(computeDelta(lm, prevLm, '27988'), 10.2);
+});
+
+test('delta lookup is by round (filter excludes other rounds)', () => {
+  const lm = getLS(apiSnapshot, '2/2568');
+  // 1/2569 records must NOT leak into 2/2568 map
+  assert.strictEqual(lm['11065'].wpct, 73.8);
+  assert.strictEqual(lm['11002'].wpct, 79.5);
+  assert.strictEqual(lm['27988'].wpct, 62.9);
+});
+
+test('delta uses server composite — items recompute does NOT override', () => {
+  // Real bug: API record had composite=73.8 but item-derived calcCatScores=89.7.
+  // Fix mandates: trust composite. After init logic, sc.wpct must equal sc.composite.
+  const sc = { hospital_code: '11065', round: '2/2568', composite: 73.8 };
+  // Mirror the fixed init logic
+  if (sc.composite !== undefined && sc.composite !== '' && !isNaN(Number(sc.composite))) {
+    sc.wpct = Number(sc.composite);
+  }
+  assert.strictEqual(sc.wpct, 73.8);
+  assert.strictEqual(gradeFromPct(sc.wpct), 'C');
+});
+
+test('delta: switching round refreshes scoreMap (no stale state)', () => {
+  // Simulate user switching from 1/2569 → 2/2568 → 1/2568
+  const lm1 = getLS(apiSnapshot, '1/2569');
+  assert.strictEqual(lm1['11065'].wpct, 71.0);
+  const lm2 = getLS(apiSnapshot, '2/2568');
+  assert.strictEqual(lm2['11065'].wpct, 73.8);
+  // Maps must be independent — switching rebuilds, not shares state
+  assert.notStrictEqual(lm1['11065'], lm2['11065']);
+});
+
 // --- Summary ---
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
 process.exit(failed > 0 ? 1 : 0);

@@ -37,6 +37,40 @@ const html = `<!DOCTYPE html>
 .overlay-loader .spinner{width:48px;height:48px;border:4px solid #e5e7eb;border-radius:50%;border-top-color:#4f46e5;animation:spin .8s linear infinite}
 .nl{white-space:pre-line}
 .qw-chip{display:inline-block;padding:4px 12px;border-radius:9999px;background:#eff6ff;color:#3b82f6;font-size:12px;cursor:pointer;border:1px solid #bfdbfe;transition:all .15s;margin:2px}.qw-chip:hover{background:#3b82f6;color:#fff}
+/* === v5.0 Redesign === */
+.num{font-feature-settings:'tnum';font-variant-numeric:tabular-nums}
+.kpi-card{transition:transform .15s,box-shadow .15s}.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.06)}
+.kpi-watch{position:relative}
+.kpi-watch::before{content:'';position:absolute;inset:-2px;border-radius:14px;background:radial-gradient(circle,rgba(245,158,11,.25),transparent 70%);z-index:-1;animation:pulse-slow 2.4s ease-in-out infinite}
+@keyframes pulse-slow{0%,100%{opacity:.4}50%{opacity:.85}}
+@keyframes pulse-cov{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.45)}50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+.kpi-cov-pulse{animation:pulse-cov 2s ease-in-out infinite}
+.year-btn{padding:4px 10px;border-radius:8px;background:#fff;border:1px solid #e5e7eb;color:#374151;cursor:pointer;font-weight:700;transition:all .15s}
+.year-btn:hover:not(:disabled){background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
+.year-btn:disabled{opacity:.4;cursor:not-allowed}
+.round-chip{padding:5px 14px;border-radius:9999px;background:#fff;border:1.5px solid #e5e7eb;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.round-chip:hover:not(:disabled){background:#eef2ff;border-color:#6366f1;color:#4338ca}
+.round-chip.active{background:linear-gradient(135deg,#6366f1,#4338ca);border-color:#4338ca;color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35)}
+.round-chip:disabled{opacity:.35;cursor:not-allowed;background:#f9fafb;color:#9ca3af}
+.heat-cell{padding:8px 6px;text-align:center;font-size:13px;font-weight:700;border-radius:6px;min-width:54px}
+.heat-95plus{background:#a7f3d0;color:#064e3b}
+.heat-90{background:#d1fae5;color:#065f46}
+.heat-80{background:#d9f99d;color:#3f6212}
+.heat-70{background:#fef9c3;color:#854d0e}
+.heat-60{background:#fef3c7;color:#92400e}
+.heat-below{background:#fee2e2;color:#991b1b}
+.prov-card{position:relative;overflow:hidden;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);border:1px solid #e5e7eb;transition:transform .15s,box-shadow .15s;cursor:pointer}
+.prov-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.dist-bar{display:flex;height:8px;border-radius:9999px;overflow:hidden;background:#f3f4f6}
+.dist-bar>span{display:block;height:100%}
+.delta-up{color:#059669;font-weight:700}
+.delta-down{color:#dc2626;font-weight:700}
+.delta-flat{color:#9ca3af;font-weight:600}
+.tab-btn{padding:8px 16px;border-radius:10px 10px 0 0;background:transparent;border:none;color:#6b7280;font-weight:600;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s}
+.tab-btn:hover{color:#4338ca;background:#eef2ff}
+.tab-btn.active{color:#4338ca;border-bottom-color:#4338ca;background:#eef2ff}
+.tab-nav{background:#fff;border:1px solid #e5e7eb;border-bottom:0;border-radius:14px 14px 0 0;padding:6px 8px 0;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:-1px;position:sticky;top:60px;z-index:25;box-shadow:0 1px 0 rgba(0,0,0,0)}
+.weak-cat-chip{display:inline-block;padding:2px 8px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600}
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -66,51 +100,168 @@ const html = `<!DOCTYPE html>
 </div>
 
 <!-- PAGE: PUBLIC DASHBOARD -->
-<div id="pageDashboard" data-testid="page-dashboard" class="container mx-auto px-4 py-6 fade-in">
+<div id="pageDashboard" data-testid="page-dashboard" class="container mx-auto px-4 py-6 fade-in" style="max-width:1400px">
 
-<!-- ===== PPT CAPTURE ZONE ===== -->
-<div id="pptSection" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-<!-- Title Row -->
-<div class="flex justify-between items-start mb-4">
-<div>
-<h2 class="text-lg font-bold text-gray-800">&#128200; ผลการประเมินมาตรฐานการเงินการคลัง สำนักงานเขตสุขภาพที่ 7</h2>
+<!-- ===== HERO + ROUND SELECTOR ===== -->
+<div id="pptSection" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
+<div class="flex justify-between items-start gap-4 flex-wrap mb-3">
+<div class="flex-1 min-w-[260px]">
+<h2 class="text-xl md:text-2xl font-extrabold text-gray-800">&#128200; ผลการประเมินมาตรฐานการเงินการคลัง</h2>
 <p id="dashSubtitle" class="text-sm text-gray-500 mt-1">กำลังโหลด...</p>
 </div>
-<div id="subBadge" class="text-right flex-shrink-0 ml-4">
-<div class="text-3xl font-bold text-emerald-600"><span id="subPctBig">-</span><span class="text-lg">%</span></div>
-<div class="text-xs text-gray-500">ส่งแล้ว <span id="subCountSmall">-</span></div>
+<div class="flex items-end gap-2 flex-wrap">
+<div>
+<label class="text-gray-500 text-xs block mb-1">ปีงบประมาณ</label>
+<div class="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
+<button id="yrPrev" class="year-btn" onclick="changeYear(-1)" aria-label="ปีก่อนหน้า">&#9664;</button>
+<span id="yrCur" class="num font-bold text-indigo-700 text-sm px-3">-</span>
+<button id="yrNext" class="year-btn" onclick="changeYear(1)" aria-label="ปีถัดไป">&#9654;</button>
 </div>
 </div>
-<!-- Summary Cards (7 cards) -->
-<div class="grid grid-cols-4 md:grid-cols-7 gap-2 mb-4">
-<div class="rounded-lg border border-gray-100 p-3 text-center bg-gray-50"><div class="text-gray-500 text-xs mb-0.5">รพ.ทั้งหมด</div><div id="sumTotal" data-testid="summary-total" class="text-xl font-bold text-indigo-600">-</div></div>
-<div class="rounded-lg border border-emerald-100 p-3 text-center bg-emerald-50 cursor-pointer hover:ring-2 hover:ring-emerald-400 transition" onclick="filterByGrade('A')"><div class="text-gray-500 text-xs mb-0.5">ดีเยี่ยม (A)</div><div id="sumA" data-testid="summary-grade-a" class="text-xl font-bold text-emerald-600">-</div></div>
-<div class="rounded-lg border border-blue-100 p-3 text-center bg-blue-50 cursor-pointer hover:ring-2 hover:ring-blue-400 transition" onclick="filterByGrade('B')"><div class="text-gray-500 text-xs mb-0.5">ดี (B)</div><div id="sumB" data-testid="summary-grade-b" class="text-xl font-bold text-blue-600">-</div></div>
-<div class="rounded-lg border border-amber-100 p-3 text-center bg-amber-50 cursor-pointer hover:ring-2 hover:ring-amber-400 transition" onclick="filterByGrade('C')"><div class="text-gray-500 text-xs mb-0.5">พอใช้ (C)</div><div id="sumC" class="text-xl font-bold text-amber-600">-</div></div>
-<div class="rounded-lg border border-red-100 p-3 text-center bg-red-50 cursor-pointer hover:ring-2 hover:ring-red-400 transition" onclick="filterByGrade('D')"><div class="text-gray-500 text-xs mb-0.5">ต้องปรับปรุง (D)</div><div id="sumD" class="text-xl font-bold text-red-600">-</div></div>
-<div class="rounded-lg border border-purple-100 p-3 text-center bg-purple-50"><div class="text-gray-500 text-xs mb-0.5">เฉลี่ย (%)</div><div id="sumAvg" class="text-xl font-bold text-purple-600">-</div></div>
-<div class="rounded-lg border border-indigo-100 p-3 text-center bg-indigo-50"><div class="text-gray-500 text-xs mb-0.5">ส่งแล้ว/ทั้งหมด</div><div id="sumSub" class="text-xl font-bold text-indigo-600">-</div></div>
+<div>
+<label class="text-gray-500 text-xs block mb-1">รอบ</label>
+<div id="roundChips" class="flex gap-1.5"></div>
 </div>
-<!-- Submission Progress Bar -->
-<div class="mb-4">
-<div class="flex items-center justify-between mb-1">
-<span class="text-xs text-gray-500">ความครอบคลุมการส่งประเมิน</span>
-<span id="subDetail" class="text-xs font-medium text-gray-600">-</span>
-</div>
-<div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-<div id="subBar" class="h-2.5 rounded-full bg-emerald-500 transition-all duration-500" style="width:0%"></div>
+<div>
+<label class="text-gray-500 text-xs block mb-1">เทียบกับ</label>
+<select id="cmpSel" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">รอบก่อนหน้า</option></select>
 </div>
 </div>
-<!-- Donut Chart + Province Overview (compact, side by side) -->
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-<div class="lg:col-span-2 bg-gray-50 rounded-lg p-3"><h3 class="font-bold text-gray-600 mb-1 text-xs">สัดส่วนระดับ</h3><div style="position:relative;height:200px"><canvas id="cDonutDash"></canvas></div></div>
-<div id="provOverview" class="lg:col-span-3 grid grid-cols-2 gap-2"></div>
+</div>
+<!-- Hidden compatibility select for existing JS (do not remove — used by refreshDash + existing tests) -->
+<select id="fRnd" data-testid="filter-round" onchange="refreshDash()" class="hidden"></select>
+<!-- Filter row -->
+<div class="flex flex-wrap gap-3 items-end pt-3 border-t border-gray-100">
+<div><label class="text-gray-500 text-xs block mb-1">พื้นที่</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">เขต 7 ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
+<div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-40"></div>
+<div><label class="text-gray-500 text-xs block mb-1">เรียงตาม</label><select id="fSort" onchange="doSortSelect()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="wpct">คะแนน (สูง&#8594;ต่ำ)</option><option value="wpct_asc">คะแนน (ต่ำ&#8594;สูง)</option><option value="name">ชื่อ รพ. (ก-ฮ)</option><option value="code">รหัส รพ.</option><option value="province">จังหวัด</option><option value="level">ระดับ รพ. (รพศ&#8594;รพช)</option><option value="grade">เกรด (A&#8594;D)</option><option value="delta">การเปลี่ยนแปลง (&Delta;)</option></select></div>
+<div class="ml-auto flex gap-2">
+<button id="btnShowMissing" onclick="switchTab('monitor');toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
+<button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
+<button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">&#128190; Download Excel</button>
 </div>
 </div>
-<!-- ===== END PPT CAPTURE ZONE ===== -->
+</div>
 
-<!-- Methodology Info Box (collapsible) -->
-<div id="methodologyBox" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+<!-- ===== TAB NAVIGATION ===== -->
+<div class="tab-nav" role="tablist" aria-label="Dashboard tabs">
+<button class="tab-btn active" data-testid="tab-dashboard" role="tab" aria-selected="true" onclick="switchTab('dashboard')">&#128202; ภาพรวม</button>
+<button class="tab-btn" data-testid="tab-monitor" role="tab" aria-selected="false" onclick="switchTab('monitor')">&#128203; ติดตามการส่ง</button>
+<button class="tab-btn" data-testid="tab-hospital" role="tab" aria-selected="false" onclick="switchTab('hospital')">&#127973; รายชื่อ รพ.</button>
+<button class="tab-btn" data-testid="tab-compare" role="tab" aria-selected="false" onclick="switchTab('compare')">&#9878; เปรียบเทียบ</button>
+</div>
+
+<!-- ===== TAB PANE: DASHBOARD ===== -->
+<div id="tabPaneDashboard" class="tab-pane" role="tabpanel" aria-labelledby="tab-dashboard">
+
+<!-- ===== KPI STRIP (4 cards) ===== -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+<!-- Card 1: ความครอบคลุม -->
+<div class="kpi-card bg-white rounded-xl p-4 shadow-sm border-t-4 border-emerald-500">
+<div class="flex justify-between items-start"><div class="text-xs font-semibold text-gray-500">&#10004; ความครอบคลุม</div><div id="kpiCovDot" class="w-2 h-2 rounded-full bg-emerald-500 hidden"></div></div>
+<div class="num text-3xl md:text-4xl font-black text-emerald-600 mt-1"><span id="kpiCovPct">-</span><span class="text-xl">%</span></div>
+<div class="text-xs text-gray-500 mt-0.5">ส่งครบ <span id="kpiCovTxt" class="num font-semibold">-</span> รพ.</div>
+<div id="kpiCovChip" class="text-xs mt-2 inline-block px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-semibold">-</div>
+</div>
+<!-- Card 2: คะแนนเฉลี่ยเขต -->
+<div class="kpi-card bg-white rounded-xl p-4 shadow-sm border-t-4 border-indigo-500">
+<div class="text-xs font-semibold text-gray-500">&#128200; คะแนนเฉลี่ยเขต</div>
+<div class="mt-1 flex items-baseline gap-2"><span id="kpiAvgPct" class="num text-3xl md:text-4xl font-black text-indigo-600">-</span><span class="text-xl text-indigo-500">%</span><span id="kpiAvgDelta" class="text-sm font-bold">-</span></div>
+<div class="text-xs text-gray-500 mt-0.5">รอบเทียบ <span id="kpiAvgPrev" class="num">-</span>%</div>
+<div id="kpiAvgInsight" class="text-xs mt-2 text-indigo-700">-</div>
+</div>
+<!-- Card 3: ผ่านเกณฑ์ — preserves summary-total/grade-a/grade-b testids -->
+<div class="kpi-card bg-white rounded-xl p-4 shadow-sm border-t-4 border-blue-500">
+<div class="text-xs font-semibold text-gray-500">&#127942; ผ่านเกณฑ์ &ge;80%</div>
+<div class="mt-1 flex items-baseline gap-1"><span id="kpiPassCount" class="num text-3xl md:text-4xl font-black text-blue-600">-</span><span class="text-xl text-gray-400">/</span><span id="sumTotal" data-testid="summary-total" class="num text-2xl font-bold text-gray-500">-</span></div>
+<div class="text-xs text-gray-500 mt-0.5">ผ่าน <span id="kpiPassPct" class="num font-semibold">-</span>%</div>
+<div class="flex flex-wrap gap-1 mt-2 text-xs">
+<span class="cursor-pointer px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:ring-2 hover:ring-emerald-300" onclick="filterByGrade('A')">A&middot;<span id="sumA" data-testid="summary-grade-a" class="num font-bold">-</span></span>
+<span class="cursor-pointer px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 hover:ring-2 hover:ring-blue-300" onclick="filterByGrade('B')">B&middot;<span id="sumB" data-testid="summary-grade-b" class="num font-bold">-</span></span>
+<span class="cursor-pointer px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:ring-2 hover:ring-amber-300" onclick="filterByGrade('C')">C&middot;<span id="sumC" class="num font-bold">-</span></span>
+<span class="cursor-pointer px-1.5 py-0.5 rounded bg-red-50 text-red-700 hover:ring-2 hover:ring-red-300" onclick="filterByGrade('D')">D&middot;<span id="sumD" class="num font-bold">-</span></span>
+<span id="sumAvg" class="hidden">-</span>
+</div>
+</div>
+<!-- Card 4: ต้องติดตาม (clickable, scrolls to watchlist) -->
+<div class="kpi-card kpi-watch bg-amber-50 rounded-xl p-4 shadow-sm border-t-4 border-amber-500 cursor-pointer" onclick="document.getElementById('watchSection').scrollIntoView({behavior:'smooth',block:'start'})">
+<div class="text-xs font-bold text-amber-800">&#9888; ต้องติดตาม</div>
+<div class="num text-3xl md:text-4xl font-black text-amber-700 mt-1"><span id="kpiWatchCount">-</span> <span class="text-xl">รพ.</span></div>
+<div class="text-xs text-amber-700 mt-0.5">คะแนน &lt;80%</div>
+<div id="kpiWatchProvs" class="text-xs mt-2 text-amber-800 font-semibold">&#128205; -</div>
+</div>
+</div>
+
+<!-- ===== WATCHLIST ALERT CARD ===== -->
+<div id="watchSection" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-amber-500 overflow-hidden mb-5">
+<div class="bg-amber-50 px-4 py-3 flex justify-between items-center flex-wrap gap-2">
+<div>
+<h3 class="font-bold text-amber-800 text-sm">&#9888;&#65039; Watch List &mdash; โรงพยาบาลที่ต้องติดตามเร่งด่วน</h3>
+<p id="watchSubtitle" class="text-xs text-amber-700 mt-0.5">-</p>
+</div>
+<button onclick="alert('Phase 1 mockup: ฟีเจอร์ส่งบันทึกถึง สสจ. จะเปิดใน Phase 2')" class="text-xs bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 px-3 py-1.5 rounded-lg font-semibold transition">&#128203; ส่งบันทึกถึง สสจ.</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-gray-600 text-xs"><tr>
+<th class="p-2 text-left">รพ.</th>
+<th class="p-2 text-center">จังหวัด</th>
+<th class="p-2 text-center">ระดับ</th>
+<th class="p-2 text-center">คะแนน</th>
+<th class="p-2 text-center">เกรด</th>
+<th class="p-2 text-center">&Delta;</th>
+<th class="p-2 text-left">หมวดที่อ่อนสุด</th>
+<th class="p-2 text-center">Action</th>
+</tr></thead>
+<tbody id="watchTbody"></tbody>
+</table>
+</div>
+</div>
+
+<!-- ===== PROVINCE CARDS (4) ===== -->
+<div id="provCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5"></div>
+
+<!-- ===== HEATMAP จังหวัด × หมวด ===== -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+<div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+<h3 class="font-bold text-gray-700 text-sm">&#128293; Heatmap จังหวัด &times; หมวด</h3>
+<div class="flex gap-2 text-xs flex-wrap">
+<span class="heat-cell heat-95plus" style="padding:2px 8px;font-size:11px">&ge;95</span>
+<span class="heat-cell heat-90" style="padding:2px 8px;font-size:11px">90-94</span>
+<span class="heat-cell heat-80" style="padding:2px 8px;font-size:11px">80-89</span>
+<span class="heat-cell heat-70" style="padding:2px 8px;font-size:11px">70-79</span>
+<span class="heat-cell heat-60" style="padding:2px 8px;font-size:11px">60-69</span>
+<span class="heat-cell heat-below" style="padding:2px 8px;font-size:11px">&lt;60</span>
+</div>
+</div>
+<div class="overflow-x-auto"><div id="heatmapWrap"></div></div>
+<div id="heatmapInsight" class="text-xs text-gray-500 mt-3">-</div>
+</div>
+
+<!-- ===== CHARTS ROW: Donut + Radar 4-prov overlay ===== -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+<h3 class="font-bold text-gray-700 mb-2 text-sm">&#128202; สัดส่วนเกรด</h3>
+<div style="position:relative;height:240px"><canvas id="cDonutDash"></canvas></div>
+<div id="donutLegend" class="grid grid-cols-2 gap-1 mt-3 text-xs"></div>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+<h3 class="font-bold text-gray-700 mb-2 text-sm">&#128203; เปรียบเทียบ 6 หมวด รายจังหวัด</h3>
+<div style="position:relative;height:240px"><canvas id="cRadarDash"></canvas></div>
+</div>
+</div>
+
+<!-- ===== HISTOGRAM (preserved for testid + single-prov view) ===== -->
+<div id="histWrap" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+<h3 id="histTitle" class="font-bold text-gray-700 mb-2 text-sm">การกระจายคะแนน (Histogram)</h3>
+<div style="position:relative;height:240px"><canvas id="cHistDash" data-testid="histogram-chart"></canvas></div>
+</div>
+<div id="provCompareWrap" class="hidden"><canvas id="cProvCompare"></canvas></div>
+<!-- Legacy compat container (kept for smoke tests + back-compat callers) -->
+<div id="provOverview" class="hidden"></div>
+
+<!-- Methodology Info Box (collapsible, kept) -->
+<div id="methodologyBox" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-5">
 <div class="flex items-start gap-3">
 <div class="text-blue-500 text-lg mt-0.5">&#9432;</div>
 <div class="flex-1">
@@ -127,8 +278,20 @@ const html = `<!DOCTYPE html>
 </div>
 </div>
 
-<!-- Missing hospitals (expandable) -->
-<div id="missingSection" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+</div><!-- /tabPaneDashboard -->
+
+<!-- ===== TAB PANE: MONITOR ===== -->
+<div id="tabPaneMonitor" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-monitor">
+
+<!-- Submission progress (compact) -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+<div class="flex items-center justify-between mb-3 flex-wrap gap-2"><h3 class="font-bold text-gray-700 text-sm">&#128202; ความครอบคลุมการส่งประเมินรอบนี้</h3><span id="subDetail2" class="text-xs font-medium text-gray-600">-</span></div>
+<div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden"><div id="subBar2" class="h-3 rounded-full bg-emerald-500 transition-all duration-500" style="width:0%"></div></div>
+<div id="subProvList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-4"></div>
+</div>
+
+<!-- Missing hospitals (expandable, kept) -->
+<div id="missingSection" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
 <div class="flex justify-between items-center mb-2">
 <h4 class="font-bold text-red-700 text-sm">&#9888; รพ.ที่ยังไม่ส่งประเมิน</h4>
 <button onclick="toggleMissing()" class="text-xs text-red-400 hover:text-red-600">&#10005; ซ่อน</button>
@@ -136,30 +299,17 @@ const html = `<!DOCTYPE html>
 <div id="missingList" class="text-xs"></div>
 </div>
 
-<!-- Filter Bar + Sort -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap gap-3 items-end">
-<div><label class="text-gray-500 text-xs block mb-1">พื้นที่</label><select id="fProv" data-testid="filter-province" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">เขต 7 ทั้งหมด</option><option value="ขอนแก่น">ขอนแก่น</option><option value="กาฬสินธุ์">กาฬสินธุ์</option><option value="มหาสารคาม">มหาสารคาม</option><option value="ร้อยเอ็ด">ร้อยเอ็ด</option></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">รอบ</label><select id="fRnd" data-testid="filter-round" onchange="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm"></select></div>
-<div><label class="text-gray-500 text-xs block mb-1">ค้นหา รพ.</label><input id="fSearch" type="text" placeholder="ชื่อหรือรหัส รพ..." oninput="refreshDash()" class="border border-gray-200 p-2 rounded-lg text-sm w-40"></div>
-<div><label class="text-gray-500 text-xs block mb-1">เรียงตาม</label><select id="fSort" onchange="doSortSelect()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="wpct">คะแนน (สูง&#8594;ต่ำ)</option><option value="wpct_asc">คะแนน (ต่ำ&#8594;สูง)</option><option value="name">ชื่อ รพ. (ก-ฮ)</option><option value="code">รหัส รพ.</option><option value="province">จังหวัด</option><option value="level">ระดับ รพ. (รพศ&#8594;รพช)</option><option value="grade">เกรด (A&#8594;D)</option><option value="delta">การเปลี่ยนแปลง (&Delta;)</option></select></div>
-<div class="ml-auto flex gap-2">
-<button id="btnShowMissing" onclick="toggleMissing()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg text-sm transition">&#9888; ดู รพ.ยังไม่ส่ง (<span id="missingCount">0</span>)</button>
-<button id="btnImport" onclick="document.getElementById('importModal').classList.remove('hidden')" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Import Excel</button>
-<button data-testid="btn-export-dash" onclick="exportDashExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">Download Excel</button>
-</div>
-</div>
+<!-- Hidden compatibility shells for refreshDash legacy IDs (preserved) -->
+<div class="hidden"><span id="subDetail">-</span><div id="subBar"></div><span id="subPctBig">-</span><span id="subCountSmall">-</span><span id="sumSub">-</span></div>
 
-<!-- Charts -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 class="font-bold text-gray-700 mb-2 text-sm">คะแนนเฉลี่ย 6 หมวด</h3><div style="position:relative;height:280px"><canvas id="cRadarDash"></canvas></div></div>
-<div id="histWrap" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5"><h3 id="histTitle" class="font-bold text-gray-700 mb-2 text-sm">การกระจายคะแนน (Histogram)</h3><div style="position:relative;height:280px"><canvas id="cHistDash" data-testid="histogram-chart"></canvas></div></div>
-</div>
-<div class="grid grid-cols-1 gap-6 mb-6">
-<div id="provCompareWrap" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hidden"><h3 class="font-bold text-gray-700 mb-2 text-sm">เปรียบเทียบรายจังหวัด 6 หมวด</h3><div style="position:relative;height:250px"><canvas id="cProvCompare"></canvas></div></div>
-</div>
+</div><!-- /tabPaneMonitor -->
+
+<!-- ===== TAB PANE: HOSPITAL ===== -->
+<div id="tabPaneHospital" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-hospital">
 
 <!-- Hospital Table -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-5">
+<div class="px-4 py-3 border-b border-gray-100"><h3 class="font-bold text-gray-700 text-sm">&#127973; รายชื่อโรงพยาบาลทั้งหมด</h3></div>
 <div class="overflow-x-auto"><table class="w-full text-sm" id="hospTable"><thead id="tblHead" class="bg-gray-50 sticky top-0"><tr>
 <th class="p-2 text-left sortable" onclick="doSort('name')">รพ.</th>
 <th class="p-2 text-center sortable" onclick="doSort('level')" style="width:50px">ระดับ</th>
@@ -175,10 +325,59 @@ const html = `<!DOCTYPE html>
 </tr></thead><tbody id="tblBody" data-testid="hospital-table-body"><tr><td colspan="11" class="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr></tbody></table></div>
 </div>
 
+</div><!-- /tabPaneHospital -->
+
+<!-- ===== TAB PANE: COMPARE ===== -->
+<div id="tabPaneCompare" class="tab-pane hidden" role="tabpanel" aria-labelledby="tab-compare">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+<div class="flex items-start gap-3 flex-wrap">
+<div class="text-indigo-500 text-lg">&#9878;</div>
+<div class="flex-1 min-w-[240px]">
+<h3 class="font-bold text-gray-700 text-sm">เปรียบเทียบ 2 รพ. หรือ 2 รอบ</h3>
+<p class="text-xs text-gray-500 mt-0.5">เลือก รพ. + รอบทั้งสองฝั่ง ระบบจะแสดงคะแนน เกรด และความต่างรายหมวด</p>
+</div>
+<div class="flex gap-2 ml-auto">
+<button onclick="cmpPreset('round')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold transition">&#128257; รพ.เดียวกัน 2 รอบ</button>
+<button onclick="cmpPreset('clear')" class="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg font-semibold transition">&#10005; ล้าง</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+<!-- Card A -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center">A</span><span class="text-sm font-semibold text-gray-700">ฝั่งที่ 1</span></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+<select id="cmpHospA" data-testid="compare-hosp-a" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; เลือก รพ. &mdash;</option></select>
+<select id="cmpRoundA" data-testid="compare-round-a" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; รอบ &mdash;</option></select>
+</div>
+<div id="cmpCardA" class="text-sm text-gray-400">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>
+</div>
+<!-- Card B -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<div class="flex items-center gap-2 mb-3"><span class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm flex items-center justify-center">B</span><span class="text-sm font-semibold text-gray-700">ฝั่งที่ 2</span></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+<select id="cmpHospB" data-testid="compare-hosp-b" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; เลือก รพ. &mdash;</option></select>
+<select id="cmpRoundB" data-testid="compare-round-b" onchange="renderCompare()" class="border border-gray-200 p-2 rounded-lg text-sm"><option value="">&mdash; รอบ &mdash;</option></select>
+</div>
+<div id="cmpCardB" class="text-sm text-gray-400">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>
+</div>
+</div>
+<!-- Side-by-side category comparison -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+<h3 class="font-bold text-gray-700 mb-3 text-sm">&#128202; เปรียบเทียบรายหมวด</h3>
+<div id="cmpDeltaTable" class="overflow-x-auto text-sm text-gray-400">เลือกข้อมูลทั้งสองฝั่งเพื่อเปรียบเทียบ</div>
+</div>
+<!-- Radar overlay -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+<h3 class="font-bold text-gray-700 mb-2 text-sm">&#128203; Radar 6 หมวด (A vs B)</h3>
+<div style="position:relative;height:300px"><canvas id="cCmpRadar"></canvas></div>
+</div>
+</div><!-- /tabPaneCompare -->
+
 <!-- Footer -->
 <div class="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
 <p>พัฒนาโดย <span class="text-gray-500 font-medium">นพ.ธงชัย เสรีรัตน์</span> โรงพยาบาลร้อยเอ็ด สำนักงานเขตสุขภาพที่ 7</p>
-<p class="mt-1">R7 Assessment System v4.3 &mdash; มาตรฐานสำคัญจำเป็นด้านการเงินการคลัง</p>
+<p class="mt-1">R7 Assessment System v5.0 &mdash; มาตรฐานสำคัญจำเป็นด้านการเงินการคลัง</p>
 </div>
 </div>
 
@@ -349,6 +548,8 @@ const API='https://script.google.com/macros/s/AKfycbxzmbB7FQIUPNTKP65jcfQdWtYNJV
 let CU=null,CH=null,AH=[],AS=[],sf='wpct',sd=-1,_rd=null,_rptD=null,_rptDm=null,_rptCat=null,_gradeFilter='';
 let cat4Sel=new Set();
 let chRD=null,chDD=null,chDet=null,chMy=null,chRpt=null;
+let _curYear=null; // current selected year in round selector
+const PROV_COLORS_V5={'ขอนแก่น':'#6366f1','กาฬสินธุ์':'#10b981','มหาสารคาม':'#f59e0b','ร้อยเอ็ด':'#ec4899'};
 
 // ==================== GRADE SYSTEM (new thresholds per Excel) ====================
 function gradeFromPct(pct){return pct>=90?'A':pct>=80?'B':pct>=70?'C':'D';}
@@ -722,22 +923,27 @@ function populateRoundSelectors(){
   const now=new Date();const by=now.getFullYear()+543;
   const cr=(now.getMonth()<6?'1/':'2/')+by;
   aRound.innerHTML=rounds.map(r=>'<option value="'+r+'"'+(r===cr?' selected':'')+'>'+r+'</option>').join('');
+  // Build new Year/Round pivot UI
+  if(latestDataRound){_curYear=Number(latestDataRound.split('/')[1]);}
+  renderRoundSelector(latestDataRound);
 }
 
 // ==================== PROCESS HISTORICAL ====================
 function processHistorical(){
   const processed=[];
   HS.forEach(rec=>{
-    // Build i_ keyed object
     const d={};EC.forEach(it=>{const k=ik(it.c);d['i_'+k]=rec['i_'+k]||0;});
     const hp=AH.find(h=>String(h.code)===String(rec.h));
     const level=hp?hp.level:'';
     const cs=calcCatScores(d,level);
     const dm=calcDims(d,level);
+    // Trust embedded rec.pct as authoritative wpct (matches server snapshot at time of export).
+    // Item-derived cs.wpct may differ if scoring formula differs (e.g., per-group caps).
+    const wpct=(rec.pct!==undefined&&rec.pct!==''&&!isNaN(Number(rec.pct)))?Number(rec.pct):cs.wpct;
     processed.push({
       hospital_code:String(rec.h),round:rec.r,date:'',
       total_raw:cs.totalRaw,total_max:cs.totalMax,
-      wpct:cs.wpct,grade:cs.grade,
+      wpct,grade:gradeFromPct(wpct),
       dim_revenue:dm.revenue,dim_cost:dm.cost,dim_discipline:dm.discipline,dim_collection:dm.collection,dim_process:dm.process,
       updated_at:rec.r,_src:'hist',_rec:rec
     });
@@ -766,19 +972,22 @@ async function init(){
         sc.round=normRound(sc.round);
         const hp=AH.find(x=>String(x.code)===String(sc.hospital_code));
         const level=hp?hp.level:'';
-        const cached=getItemCached(sc.hospital_code,sc.round,sc);
-        if(cached){
-          const cs=calcCatScores(cached,level);
-          sc.wpct=cs.wpct;sc.grade=cs.grade;sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;
-        }else if(sc.composite!==undefined&&sc.composite!==''){
-          sc.wpct=Number(sc.composite)||0;
-          sc.grade=sc.grade||gradeFromPct(sc.wpct);
-        }else{
-          const raw=Number(sc.total_raw||0);
-          const mx=(!level||['M1','M2','A'].includes(level))?150:145;
-          sc.wpct=mx>0?Math.round(raw/mx*1000)/10:0;
-          sc.grade=gradeFromPct(sc.wpct);
-          sc.total_max=mx;
+        // wpct: trust server-provided composite as authoritative.
+        // Items can drift from composite (server may use different formula or stale items),
+        // so we DON'T recompute wpct from items here — only fall back when composite missing.
+        if(sc.composite!==undefined&&sc.composite!==''&&!isNaN(Number(sc.composite))){
+          sc.wpct=Number(sc.composite);
+        }else if(sc.wpct===undefined||sc.wpct===''||isNaN(Number(sc.wpct))){
+          const cached=getItemCached(sc.hospital_code,sc.round,sc);
+          if(cached){const cs=calcCatScores(cached,level);sc.wpct=cs.wpct;}
+          else{const raw=Number(sc.total_raw||0);const mx=(!level||['M1','M2','A'].includes(level))?150:145;sc.wpct=mx>0?Math.round(raw/mx*1000)/10:0;}
+        }else{sc.wpct=Number(sc.wpct);}
+        sc.grade=gradeFromPct(sc.wpct);
+        // total_raw/total_max needed for category breakdown displays — compute if absent.
+        if(sc.total_raw===undefined||sc.total_max===undefined){
+          const cached=getItemCached(sc.hospital_code,sc.round,sc);
+          if(cached){const cs=calcCatScores(cached,level);sc.total_raw=cs.totalRaw;sc.total_max=cs.totalMax;}
+          else{sc.total_max=(!level||['M1','M2','A'].includes(level))?150:145;sc.total_raw=Number(sc.total_raw||0);}
         }
         return sc;
       });
@@ -857,15 +1066,17 @@ function refreshDash(){
   const search=(document.getElementById('fSearch')||{}).value||'';
   const searchLow=search.trim().toLowerCase();
   const lm=getLS(AS,rn);
-  const prevRn=getPrevRound(rn);
+  const cmpSelEl=document.getElementById('cmpSel');
+  const cmpVal=cmpSelEl?cmpSelEl.value:'';
+  const prevRn=cmpVal||getPrevRound(rn);
   const prevLm=prevRn?getLS(AS,prevRn):{};
   let fh=AH.slice();
   if(pv)fh=fh.filter(h=>h.province===pv);
   if(searchLow)fh=fh.filter(h=>h.name.toLowerCase().includes(searchLow)||String(h.code).includes(searchLow));
-  let cA=0,cB=0,cC=0,cD=0,tot=0,cnt=0;
+  let cA=0,cB=0,cC=0,cD=0,tot=0,cnt=0,passCnt=0,prevTot=0,prevCnt=0;
   const catSums=[0,0,0,0,0,0];let catCnt=0;
   const allWpcts=[];
-  const missingHosps=[];
+  const missingHosps=[];const watchHosps=[];
   fh.forEach(h=>{
     const s=lm[String(h.code)];
     if(s){
@@ -873,11 +1084,15 @@ function refreshDash(){
       const g=s.grade||gradeFromPct(wp);
       if(g==='A')cA++;else if(g==='B')cB++;else if(g==='C')cC++;else cD++;
       tot+=wp;cnt++;allWpcts.push(wp);
+      if(wp>=80)passCnt++;
+      if(wp>0&&wp<80)watchHosps.push(h);
       const cached=getItemCached(h.code,s.round||'',s);
       if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{catSums[i]+=c.pct;});catCnt++;}
     }else{
       missingHosps.push(h);
     }
+    const ps=prevLm[String(h.code)];
+    if(ps){const pwp=Number(ps.wpct||0);if(pwp>0){prevTot+=pwp;prevCnt++;}}
   });
   const submitted=cnt,notSubmitted=fh.length-submitted;
   const subPct=fh.length>0?Math.round(submitted/fh.length*100):0;
@@ -887,18 +1102,40 @@ function refreshDash(){
   document.getElementById('sumC').textContent=cC;document.getElementById('sumD').textContent=cD;
   document.getElementById('sumAvg').textContent=cnt>0?(tot/cnt).toFixed(1):'-';
   document.getElementById('sumSub').textContent=submitted+'/'+fh.length;
-  ['A','B','C','D'].forEach(g=>{const el=document.getElementById('sum'+g);if(el)el.parentElement.style.outline=(_gradeFilter===g)?'2px solid #4f46e5':'';});
+  ['A','B','C','D'].forEach(g=>{const el=document.getElementById('sum'+g);if(el){const sp=el.parentElement;if(sp&&sp.tagName==='SPAN')sp.style.boxShadow=(_gradeFilter===g)?'0 0 0 2px #4f46e5':'';}});
   // Dashboard subtitle
   const roundLabel=rn||'-';
   const provLabel=pv||'เขต 7 ทั้งหมด';
-  document.getElementById('dashSubtitle').textContent=provLabel+' | รอบ '+roundLabel+' | '+fh.length+' รพ.';
-  // Submission tracking
-  document.getElementById('subPctBig').textContent=subPct;
-  document.getElementById('subCountSmall').textContent=submitted+'/'+fh.length;
-  document.getElementById('subDetail').textContent='ส่งแล้ว '+submitted+' | ยังไม่ส่ง '+notSubmitted+' จาก '+fh.length+' รพ.';
+  document.getElementById('dashSubtitle').textContent=provLabel+' | รอบ '+roundLabel+(prevRn&&prevRn!==rn?' (เทียบ '+prevRn+')':'')+' | '+fh.length+' รพ.';
+  const avg=cnt>0?tot/cnt:0;
+  const prevAvg=prevCnt>0?prevTot/prevCnt:null;
+  const deltaAvg=prevAvg!==null?(avg-prevAvg):null;
+  // KPI strip (v5.0)
+  renderKPIStrip({subPct,submitted,fhLen:fh.length,notSub:notSubmitted,cnt,avg,prevAvg,deltaAvg,pass:passCnt,watchHosps,gA:cA,gB:cB,gC:cC,gD:cD});
+  // Submission tracking (legacy compat IDs)
+  const subPctBig=document.getElementById('subPctBig');if(subPctBig)subPctBig.textContent=subPct;
+  const subCountSmall=document.getElementById('subCountSmall');if(subCountSmall)subCountSmall.textContent=submitted+'/'+fh.length;
+  const subDetail=document.getElementById('subDetail');if(subDetail)subDetail.textContent='ส่งแล้ว '+submitted+' | ยังไม่ส่ง '+notSubmitted+' จาก '+fh.length+' รพ.';
   const subBarEl=document.getElementById('subBar');
-  subBarEl.style.width=subPct+'%';
-  subBarEl.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';
+  if(subBarEl){subBarEl.style.width=subPct+'%';subBarEl.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';}
+  // Monitor tab: visible submission tracker
+  const sb2=document.getElementById('subBar2'),sd2=document.getElementById('subDetail2');
+  if(sb2){sb2.style.width=subPct+'%';sb2.style.background=subPct>=80?'#10b981':subPct>=50?'#f59e0b':'#ef4444';}
+  if(sd2)sd2.textContent='ส่งแล้ว '+submitted+'/'+fh.length+' ('+subPct+'%) | ยังไม่ส่ง '+notSubmitted+' รพ.';
+  const slEl=document.getElementById('subProvList');
+  if(slEl){
+    const pvList=pv?[pv]:PROVS;
+    slEl.innerHTML=pvList.map(prov=>{
+      const pvH=AH.filter(h=>h.province===prov);
+      if(!pvH.length)return '';
+      let pSub=0;const pNotList=[];pvH.forEach(h=>{if(lm[String(h.code)])pSub++;else pNotList.push(h);});
+      const pTot=pvH.length,pNot=pTot-pSub;
+      const pPct=pTot>0?Math.round(pSub/pTot*100):0;
+      const color=pPct>=80?'#10b981':pPct>=50?'#f59e0b':'#ef4444';
+      const tip=pNotList.length?'\\n\\nยังไม่ส่ง:\\n'+pNotList.map(h=>'• '+h.name).join('\\n'):'';
+      return '<div class="bg-gray-50 rounded-lg border border-gray-100 p-3" title="'+esc(prov+' — ส่งแล้ว '+pSub+'/'+pTot+tip)+'"><div class="flex justify-between items-center mb-1"><span class="font-semibold text-sm text-gray-700">'+esc(prov)+'</span><span class="text-xs font-bold" style="color:'+color+'">'+pPct+'%</span></div><div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-2"><div class="h-2 rounded-full transition-all" style="width:'+pPct+'%;background:'+color+'"></div></div><div class="text-xs text-gray-500">ส่งแล้ว '+pSub+'/'+pTot+(pNot>0?' &middot; <span class="text-red-600 font-semibold">ยังไม่ส่ง '+pNot+'</span>':'')+'</div></div>';
+    }).join('');
+  }
   // Missing hospitals button + list
   const btnMissing=document.getElementById('btnShowMissing');
   const missingCountEl=document.getElementById('missingCount');
@@ -923,20 +1160,20 @@ function refreshDash(){
     document.getElementById('missingSection').classList.add('hidden');
     document.getElementById('missingList').innerHTML='<div class="text-emerald-600 font-medium">&#10004; ส่งครบทุก รพ. แล้ว</div>';
   }
-  // Charts
-  const catAvg=catCnt>0?catSums.map(s=>Math.round(s/catCnt)):[0,0,0,0,0,0];
-  mkRadar6('cRadarDash','chRD',catAvg);mkDonut([cA,cB,cC,cD]);
-  // Province overview cards
-  renderProvOverview(fh,lm);
-  // Charts: histogram for single province, province comparison for whole region
-  const hw=document.getElementById('histWrap'),pcw=document.getElementById('provCompareWrap');
+  // Charts (v5.0): donut + radar (4-prov overlay or single prov)
+  mkDonut([cA,cB,cC,cD]);renderDonutLegend([cA,cB,cC,cD]);
   if(pv||searchLow){
-    if(hw)hw.classList.remove('hidden');if(pcw)pcw.classList.add('hidden');
+    const catAvg=catCnt>0?catSums.map(s=>Math.round(s/catCnt)):[0,0,0,0,0,0];
+    mkRadar6('cRadarDash','chRD',catAvg);
+    const hw=document.getElementById('histWrap');if(hw)hw.classList.remove('hidden');
     mkHistogram(allWpcts);
   }else{
-    if(hw)hw.classList.remove('hidden');if(pcw)pcw.classList.remove('hidden');
-    mkProvCompare(AH,lm,rn);
+    renderRadarProv(AH,lm);
+    const hw=document.getElementById('histWrap');if(hw)hw.classList.add('hidden');
   }
+  // Province cards + heatmap (v5.0)
+  renderProvinceCards(AH,lm,prevLm);
+  renderHeatmap(AH,lm);
   // Build rows with delta + category heatmap data
   let rows=fh.map(h=>{
     const s=lm[String(h.code)];
@@ -950,6 +1187,8 @@ function refreshDash(){
     if(cached){const cs=calcCatScores(cached,h.level);catPcts=cs.categories.map(c=>c.pct);}
     return{code:h.code,name:h.name,province:h.province,level:h.level||'-',wpct:wp,grade:g,delta,catPcts};
   });
+  // Watchlist (v5.0): use unfiltered rows so it shows even when grade filter is active
+  renderWatchlist(rows,rn);
   if(_gradeFilter)rows=rows.filter(r=>r.grade===_gradeFilter);
   // Enhanced sort logic
   if(sf==='level'){
@@ -993,6 +1232,125 @@ function filterByGrade(g){_gradeFilter=(_gradeFilter===g)?'':g;refreshDash();}
 function clearGradeFilter(){_gradeFilter='';refreshDash();}
 function toggleMissing(){const s=document.getElementById('missingSection');s.classList.toggle('hidden');}
 function toggleMethodBox(){const b=document.getElementById('methodologyBox');b.classList.toggle('hidden');ls('r7_methodBox_hidden',b.classList.contains('hidden'));}
+
+// ==================== TABS (v5.0 Phase 2) ====================
+let chCmpRadar=null;
+function switchTab(name){
+  const TABS=['dashboard','monitor','hospital','compare'];
+  if(TABS.indexOf(name)<0)return;
+  TABS.forEach(t=>{
+    const cap=t.charAt(0).toUpperCase()+t.slice(1);
+    const pane=document.getElementById('tabPane'+cap);
+    if(pane)pane.classList.toggle('hidden',t!==name);
+    const btn=document.querySelector('[data-testid="tab-'+t+'"]');
+    if(btn){btn.classList.toggle('active',t===name);btn.setAttribute('aria-selected',t===name?'true':'false');}
+  });
+  if(name==='compare')renderCompareTab();
+}
+function renderCompareTab(){
+  const hA=document.getElementById('cmpHospA'),hB=document.getElementById('cmpHospB');
+  const rA=document.getElementById('cmpRoundA'),rB=document.getElementById('cmpRoundB');
+  if(!hA||!hB||!rA||!rB)return;
+  const hopt='<option value="">— เลือก รพ. —</option>'+AH.slice().sort((x,y)=>{const pi=PROVS.indexOf(x.province)-PROVS.indexOf(y.province);return pi||x.name.localeCompare(y.name,'th');}).map(h=>'<option value="'+h.code+'">'+esc(h.name)+' ('+esc(h.province||'')+')</option>').join('');
+  const prevA=hA.value,prevB=hB.value;
+  hA.innerHTML=hopt;hB.innerHTML=hopt;
+  if(prevA)hA.value=prevA;if(prevB)hB.value=prevB;
+  const rounds=getAvailableRounds();
+  const ropt='<option value="">— รอบ —</option>'+rounds.map(r=>'<option value="'+r+'">รอบ '+esc(r)+'</option>').join('');
+  const prevRA=rA.value,prevRB=rB.value;
+  rA.innerHTML=ropt;rB.innerHTML=ropt;
+  if(prevRA)rA.value=prevRA;if(prevRB)rB.value=prevRB;
+  // First-time defaults: same hospital, prev round vs current round
+  if(!hA.value&&!hB.value&&AH.length){
+    const code=String(AH[0].code);hA.value=code;hB.value=code;
+  }
+  if(!rA.value&&!rB.value){
+    const cur=document.getElementById('fRnd').value;const prev=getPrevRound(cur);
+    if(prev&&rounds.indexOf(prev)>=0)rA.value=prev;
+    if(cur&&rounds.indexOf(cur)>=0)rB.value=cur;
+  }
+  renderCompare();
+}
+function cmpPreset(mode){
+  if(mode==='clear'){
+    ['cmpHospA','cmpRoundA','cmpHospB','cmpRoundB'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    if(chCmpRadar){chCmpRadar.destroy();chCmpRadar=null;}
+    renderCompare();return;
+  }
+  if(mode==='round'){
+    const code=document.getElementById('cmpHospA').value||document.getElementById('cmpHospB').value||(AH[0]?String(AH[0].code):'');
+    const curRn=document.getElementById('fRnd').value;const prevRn=getPrevRound(curRn);
+    document.getElementById('cmpHospA').value=code;document.getElementById('cmpHospB').value=code;
+    if(prevRn)document.getElementById('cmpRoundA').value=prevRn;
+    if(curRn)document.getElementById('cmpRoundB').value=curRn;
+    renderCompare();
+  }
+}
+function renderCompare(){
+  const buildSide=(hospEl,rnEl,cardEl)=>{
+    if(!hospEl||!rnEl||!cardEl)return null;
+    const code=hospEl.value,rn=rnEl.value;
+    if(!code||!rn){cardEl.innerHTML='<div class="text-gray-400 text-xs">เลือก รพ. + รอบ เพื่อแสดงข้อมูล</div>';return null;}
+    const hp=AH.find(h=>String(h.code)===String(code));
+    const sc=AS.find(s=>String(s.hospital_code)===String(code)&&s.round===rn);
+    if(!sc){cardEl.innerHTML='<div class="text-amber-600 text-xs">&#9888; ไม่พบข้อมูลรอบนี้สำหรับ รพ.นี้</div>';return null;}
+    const wp=Number(sc.wpct||0);const g=sc.grade||gradeFromPct(wp);
+    const cached=getItemCached(code,rn,sc);
+    const cats=cached?calcCatScores(cached,hp?hp.level:'').categories:null;
+    const gradeBg=g==='A'?'bg-emerald-100 text-emerald-700':g==='B'?'bg-blue-100 text-blue-700':g==='C'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700';
+    let h='<div class="flex justify-between items-start gap-2 mb-2"><div class="min-w-0 flex-1"><div class="font-bold text-gray-800 text-sm truncate">'+esc(hp?hp.name:code)+'</div><div class="text-xs text-gray-500">'+esc((hp&&hp.province)||'')+' &middot; ระดับ '+esc((hp&&hp.level)||'-')+' &middot; รอบ '+esc(rn)+'</div></div><div class="text-right"><div class="num text-2xl font-black text-indigo-600">'+wp.toFixed(1)+'<span class="text-base">%</span></div><span class="inline-block mt-0.5 px-2 py-0.5 rounded text-xs font-bold '+gradeBg+'">เกรด '+g+'</span></div></div>';
+    if(cats){
+      h+='<div class="space-y-1.5 mt-2">';
+      cats.forEach((c,i)=>{
+        const pct=Math.round(c.pct);
+        const color=pct>=90?'#10b981':pct>=80?'#3b82f6':pct>=70?'#f59e0b':'#ef4444';
+        const labelTxt=(typeof CAT_LABELS!=='undefined'&&CAT_LABELS[i])?CAT_LABELS[i]:(typeof CATS!=='undefined'&&CATS[i]&&CATS[i].sn)?CATS[i].sn:'';
+        h+='<div><div class="flex justify-between text-xs mb-0.5"><span class="text-gray-600">หมวด '+(i+1)+': '+esc(labelTxt)+'</span><span class="font-bold text-gray-700">'+pct+'%</span></div><div class="bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full" style="width:'+pct+'%;background:'+color+'"></div></div></div>';
+      });
+      h+='</div>';
+    }else{
+      h+='<div class="text-xs text-gray-400 mt-2">ไม่มีรายละเอียดรายหมวด</div>';
+    }
+    cardEl.innerHTML=h;
+    return {wp:wp,cats:cats,sc:sc,hp:hp,rn:rn,g:g};
+  };
+  const A=buildSide(document.getElementById('cmpHospA'),document.getElementById('cmpRoundA'),document.getElementById('cmpCardA'));
+  const B=buildSide(document.getElementById('cmpHospB'),document.getElementById('cmpRoundB'),document.getElementById('cmpCardB'));
+  const dt=document.getElementById('cmpDeltaTable');if(!dt)return;
+  if(!A||!B){
+    dt.innerHTML='<div class="text-gray-400 text-xs p-2">เลือกข้อมูลทั้งสองฝั่งเพื่อเปรียบเทียบ</div>';
+    if(chCmpRadar){chCmpRadar.destroy();chCmpRadar=null;}
+    return;
+  }
+  const dWp=B.wp-A.wp;
+  const dColor=dWp>0.05?'text-emerald-600':dWp<-0.05?'text-red-600':'text-gray-500';
+  const dArrow=dWp>0.05?'&#9650;':dWp<-0.05?'&#9660;':'&#9135;';
+  let html='<table class="w-full text-sm"><thead class="bg-gray-50 text-xs text-gray-600"><tr><th class="p-2 text-left">หมวด</th><th class="p-2 text-right">A</th><th class="p-2 text-right">B</th><th class="p-2 text-right">&Delta; (B−A)</th></tr></thead><tbody>';
+  html+='<tr class="bg-indigo-50 font-bold"><td class="p-2">คะแนนรวม</td><td class="p-2 text-right">'+A.wp.toFixed(1)+'%</td><td class="p-2 text-right">'+B.wp.toFixed(1)+'%</td><td class="p-2 text-right '+dColor+'">'+dArrow+' '+(dWp>0?'+':'')+dWp.toFixed(1)+'</td></tr>';
+  if(A.cats&&B.cats){
+    A.cats.forEach((c,i)=>{
+      const aPct=Math.round(c.pct),bPct=Math.round(B.cats[i].pct);
+      const d=bPct-aPct;
+      const dc=d>0?'text-emerald-600':d<0?'text-red-600':'text-gray-500';
+      const da=d>0?'&#9650;':d<0?'&#9660;':'&#9135;';
+      const labelTxt=(typeof CAT_LABELS!=='undefined'&&CAT_LABELS[i])?CAT_LABELS[i]:(typeof CATS!=='undefined'&&CATS[i]&&CATS[i].sn)?CATS[i].sn:'';
+      html+='<tr class="border-t"><td class="p-2 text-gray-700">'+(i+1)+'. '+esc(labelTxt)+'</td><td class="p-2 text-right">'+aPct+'%</td><td class="p-2 text-right">'+bPct+'%</td><td class="p-2 text-right font-semibold '+dc+'">'+da+' '+(d>0?'+':'')+d+'</td></tr>';
+    });
+  }
+  html+='</tbody></table>';
+  dt.innerHTML=html;
+  // Radar overlay A vs B
+  const cv=document.getElementById('cCmpRadar');
+  if(cv&&A.cats&&B.cats&&typeof Chart!=='undefined'){
+    const ctx=cv.getContext('2d');
+    if(chCmpRadar)chCmpRadar.destroy();
+    const labels=(typeof CAT_LABELS!=='undefined')?CAT_LABELS:['1','2','3','4','5','6'];
+    chCmpRadar=new Chart(ctx,{type:'radar',data:{labels:labels,datasets:[
+      {label:'A',data:A.cats.map(c=>Math.round(c.pct)),backgroundColor:'rgba(79,70,229,0.15)',borderColor:'rgba(79,70,229,0.9)',borderWidth:2,pointBackgroundColor:'rgba(79,70,229,1)',pointRadius:4},
+      {label:'B',data:B.cats.map(c=>Math.round(c.pct)),backgroundColor:'rgba(16,185,129,0.15)',borderColor:'rgba(16,185,129,0.9)',borderWidth:2,pointBackgroundColor:'rgba(16,185,129,1)',pointRadius:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},pointLabels:{font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}}}});
+  }
+}
 
 // ==================== CHARTS ====================
 function mkRadar6(id,vn,vals){
@@ -1040,6 +1398,252 @@ function getPrevRound(rn){
   const idx=rounds.indexOf(rn);
   if(idx>=0&&idx<rounds.length-1)return rounds[idx+1];
   return null;
+}
+
+// ==================== ROUND SELECTOR (v5.0) ====================
+function getAvailableRounds(){
+  const rndSet=new Set();AS.forEach(s=>{if(s.round)rndSet.add(normRound(s.round));});
+  return[...rndSet].sort((a,b)=>{const[ra,ya]=a.split('/').map(Number);const[rb,yb]=b.split('/').map(Number);return yb!==ya?yb-ya:rb-ra;});
+}
+function getAvailableYears(){
+  const ys=new Set();getAvailableRounds().forEach(r=>ys.add(Number(r.split('/')[1])));
+  return[...ys].sort((a,b)=>a-b);
+}
+function changeYear(delta){
+  const ys=getAvailableYears();if(!ys.length)return;
+  let idx=ys.indexOf(_curYear);if(idx<0)idx=ys.length-1;
+  const ni=Math.max(0,Math.min(ys.length-1,idx+delta));
+  if(ni===idx)return;
+  _curYear=ys[ni];
+  const yearRounds=getAvailableRounds().filter(r=>Number(r.split('/')[1])===_curYear);
+  if(yearRounds.length){
+    const fRnd=document.getElementById('fRnd');
+    fRnd.value=yearRounds[0];
+    renderRoundSelector(yearRounds[0]);
+    refreshDash();
+  }else{renderRoundSelector('');}
+}
+function selectRound(r){
+  const fRnd=document.getElementById('fRnd');
+  fRnd.value=r;
+  _curYear=Number(r.split('/')[1]);
+  renderRoundSelector(r);
+  refreshDash();
+}
+function renderRoundSelector(currentRn){
+  const ys=getAvailableYears();
+  const yrCur=document.getElementById('yrCur');
+  const yrPrev=document.getElementById('yrPrev');
+  const yrNext=document.getElementById('yrNext');
+  if(!yrCur||!yrPrev||!yrNext)return;
+  if(!_curYear&&ys.length)_curYear=ys[ys.length-1];
+  yrCur.textContent=_curYear?(_curYear+' (พ.ศ.)'):'-';
+  const idx=ys.indexOf(_curYear);
+  yrPrev.disabled=idx<=0;
+  yrNext.disabled=idx<0||idx>=ys.length-1;
+  const allRounds=getAvailableRounds();
+  const yearRounds=allRounds.filter(r=>Number(r.split('/')[1])===_curYear).map(r=>Number(r.split('/')[0]));
+  const chipsEl=document.getElementById('roundChips');
+  if(chipsEl){
+    chipsEl.innerHTML=[1,2].map(rn=>{
+      const has=yearRounds.indexOf(rn)>=0;
+      const rndStr=rn+'/'+_curYear;
+      const active=(currentRn===rndStr);
+      return '<button type="button" class="round-chip'+(active?' active':'')+'"'+(!has?' disabled':'')+' onclick="selectRound(\\''+rndStr+'\\')">รอบ '+rn+'</button>';
+    }).join('');
+  }
+  // Compare dropdown — exclude current round, only rounds with data
+  const cmpSel=document.getElementById('cmpSel');
+  if(cmpSel){
+    const prev=cmpSel.value;
+    const opts=['<option value="">รอบก่อนหน้า</option>'];
+    allRounds.filter(r=>r!==currentRn).forEach(r=>opts.push('<option value="'+r+'">'+r+'</option>'));
+    cmpSel.innerHTML=opts.join('');
+    if(prev&&allRounds.indexOf(prev)>=0&&prev!==currentRn)cmpSel.value=prev;
+  }
+}
+
+// ==================== KPI STRIP (v5.0) ====================
+function renderKPIStrip(stats){
+  document.getElementById('kpiCovPct').textContent=stats.subPct;
+  document.getElementById('kpiCovTxt').textContent=stats.submitted+'/'+stats.fhLen;
+  const cov=document.getElementById('kpiCovChip');
+  if(cov){
+    if(stats.notSub===0){cov.textContent='\u2713 ครบทุกจังหวัด';cov.className='text-xs mt-2 inline-block px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold';}
+    else{cov.textContent='\u26a0 ขาด '+stats.notSub+' รพ.';cov.className='text-xs mt-2 inline-block px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-semibold';}
+  }
+  const dot=document.getElementById('kpiCovDot');
+  if(dot){if(stats.subPct===100)dot.classList.remove('hidden');else dot.classList.add('hidden');}
+  document.getElementById('kpiAvgPct').textContent=stats.cnt>0?stats.avg.toFixed(1):'-';
+  const delta=stats.deltaAvg;
+  const delEl=document.getElementById('kpiAvgDelta');
+  if(delEl){
+    if(delta===null){delEl.textContent='\u2014';delEl.className='text-sm font-bold delta-flat';}
+    else if(delta>=0.05){delEl.textContent='\u25b2 +'+delta.toFixed(1);delEl.className='text-sm font-bold delta-up';}
+    else if(delta<=-0.05){delEl.textContent='\u25bc '+delta.toFixed(1);delEl.className='text-sm font-bold delta-down';}
+    else{delEl.textContent='\u2500';delEl.className='text-sm font-bold delta-flat';}
+  }
+  document.getElementById('kpiAvgPrev').textContent=stats.prevAvg!==null?stats.prevAvg.toFixed(1):'-';
+  const ins=document.getElementById('kpiAvgInsight');
+  if(ins){
+    if(stats.prevAvg===null)ins.textContent='ยังไม่มีรอบเทียบ';
+    else if(delta>=2)ins.textContent='ดีขึ้นชัดเจน';
+    else if(delta<=-2)ins.textContent='ลดลง — ต้องตรวจสอบ';
+    else if(delta>=0)ins.textContent='ทรงตัว/ปรับดีขึ้นเล็กน้อย';
+    else ins.textContent='ปรับลงเล็กน้อย';
+  }
+  document.getElementById('kpiPassCount').textContent=stats.pass;
+  document.getElementById('kpiPassPct').textContent=stats.fhLen>0?Math.round(stats.pass/stats.fhLen*100):0;
+  document.getElementById('kpiWatchCount').textContent=stats.watchHosps.length;
+  const provs=[...new Set(stats.watchHosps.map(h=>h.province))];
+  const wp=document.getElementById('kpiWatchProvs');
+  if(wp)wp.textContent=provs.length?'\ud83d\udccd '+provs.join(' \u00b7 '):'\ud83d\udccd ไม่มี รพ. ที่ต้องติดตาม';
+}
+
+// ==================== WATCHLIST (v5.0) ====================
+function findWeakestCat(catPcts){
+  const names=['วางแผน','เวชระเบียน','จัดเก็บรายได้','แผนธุรกิจ','PP Fee','ควบคุมจ่าย'];
+  if(!catPcts||!catPcts.length)return{idx:-1,name:'-',pct:0};
+  let mi=0,mv=catPcts[0];
+  for(let i=1;i<catPcts.length;i++)if(catPcts[i]<mv){mv=catPcts[i];mi=i;}
+  return{idx:mi,name:names[mi]||'-',pct:mv};
+}
+function renderWatchlist(rows,rn){
+  const sec=document.getElementById('watchSection');
+  const tbody=document.getElementById('watchTbody');
+  const subtitle=document.getElementById('watchSubtitle');
+  if(!tbody||!sec)return;
+  const watchRows=rows.filter(r=>r.wpct>0&&r.wpct<80).sort((a,b)=>a.wpct-b.wpct);
+  if(!watchRows.length){sec.classList.add('hidden');tbody.innerHTML='';return;}
+  sec.classList.remove('hidden');
+  if(subtitle)subtitle.textContent=watchRows.length+' รพ. คะแนน <80% ในรอบ '+(rn||'-');
+  tbody.innerHTML=watchRows.map(r=>{
+    const w=findWeakestCat(r.catPcts);
+    const dStr=r.delta!==null?(r.delta>0?'<span class="delta-up">\u25b2+'+r.delta.toFixed(1)+'</span>':r.delta<0?'<span class="delta-down">\u25bc'+r.delta.toFixed(1)+'</span>':'<span class="delta-flat">\u2500</span>'):'<span class="text-gray-300">-</span>';
+    const lvBg=r.level==='S'?'bg-purple-100 text-purple-700':['M1','M2','A'].includes(r.level)?'bg-blue-100 text-blue-700':'bg-gray-100 text-gray-600';
+    return '<tr class="border-b border-gray-50 hover:bg-amber-50/50"><td class="p-2"><div class="font-medium text-sm text-gray-800">'+esc(r.name)+'</div><div class="text-xs text-gray-400">'+r.code+'</div></td><td class="p-2 text-center text-xs text-gray-600">'+esc(r.province)+'</td><td class="p-2 text-center"><span class="inline-block px-1.5 py-0.5 rounded text-xs font-medium '+lvBg+'">'+r.level+'</span></td><td class="p-2 text-center font-bold text-amber-700 num">'+r.wpct.toFixed(1)+'</td><td class="p-2 text-center"><span class="inline-block px-2 py-0.5 rounded text-xs font-bold '+gradeClass(r.grade)+'">'+r.grade+'</span></td><td class="p-2 text-center text-xs">'+dStr+'</td><td class="p-2 text-xs"><span class="weak-cat-chip">'+esc(w.name)+' '+(w.pct||0).toFixed(0)+'%</span></td><td class="p-2 text-center"><button type="button" onclick="event.stopPropagation();openDetail(\\''+r.code+'\\')" class="text-xs px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold">\ud83d\udccb ดู</button></td></tr>';
+  }).join('');
+}
+
+// ==================== PROVINCE CARDS (v5.0) ====================
+function renderProvinceCards(allHosp,scoreMap,prevMap){
+  const container=document.getElementById('provCards');
+  if(!container)return;
+  const pv=document.getElementById('fProv').value;
+  if(pv){container.innerHTML='';return;}
+  const provData=PROVS.map(prov=>{
+    const pvH=allHosp.filter(h=>h.province===prov);
+    let gA=0,gB=0,gC=0,gD=0,sum=0,cnt=0,prevSum=0,prevCnt=0;
+    let topH=null,bottomH=null,bestPct=-1,worstPct=999;
+    let watchCnt=0;
+    pvH.forEach(h=>{
+      const s=scoreMap[String(h.code)];
+      if(s){
+        const wp=Number(s.wpct||0);
+        const g=s.grade||gradeFromPct(wp);
+        if(g==='A')gA++;else if(g==='B')gB++;else if(g==='C')gC++;else gD++;
+        sum+=wp;cnt++;
+        if(wp>0&&wp<80)watchCnt++;
+        if(wp>bestPct){bestPct=wp;topH=h;}
+        if(wp<worstPct&&wp>0){worstPct=wp;bottomH=h;}
+      }
+      const ps=prevMap[String(h.code)];
+      if(ps){const pwp=Number(ps.wpct||0);if(pwp>0){prevSum+=pwp;prevCnt++;}}
+    });
+    const avg=cnt>0?sum/cnt:0;
+    const prevAvg=prevCnt>0?prevSum/prevCnt:null;
+    const delta=prevAvg!==null?(avg-prevAvg):null;
+    return{prov,avg,delta,gA,gB,gC,gD,cnt,total:pvH.length,topH,topPct:bestPct,bottomH,botPct:worstPct,watchCnt,prevAvg};
+  }).sort((a,b)=>b.avg-a.avg);
+  container.innerHTML=provData.map(p=>{
+    const color=PROV_COLORS_V5[p.prov]||'#6366f1';
+    const dStr=p.delta!==null?(p.delta>=0.05?'<span class="delta-up">\u25b2 +'+p.delta.toFixed(1)+'</span>':p.delta<=-0.05?'<span class="delta-down">\u25bc '+p.delta.toFixed(1)+'</span>':'<span class="delta-flat">\u2500 ทรงตัว</span>'):'<span class="delta-flat">\u2014 รอบแรก</span>';
+    const total=p.gA+p.gB+p.gC+p.gD;
+    const distBar=total>0?'<div class="dist-bar mt-2"><span style="width:'+(p.gA/total*100)+'%;background:#10b981" title="A '+p.gA+'"></span><span style="width:'+(p.gB/total*100)+'%;background:#3b82f6" title="B '+p.gB+'"></span><span style="width:'+(p.gC/total*100)+'%;background:#f59e0b" title="C '+p.gC+'"></span><span style="width:'+(p.gD/total*100)+'%;background:#ef4444" title="D '+p.gD+'"></span></div>':'<div class="dist-bar mt-2"></div>';
+    const chips=[];
+    if(p.gA)chips.push('<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">A\u00b7'+p.gA+'</span>');
+    if(p.gB)chips.push('<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-semibold">B\u00b7'+p.gB+'</span>');
+    if(p.gC)chips.push('<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-semibold">C\u00b7'+p.gC+'</span>');
+    if(p.gD)chips.push('<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-xs font-semibold">D\u00b7'+p.gD+'</span>');
+    const hdr='linear-gradient(135deg,'+color+'18,transparent)';
+    return '<div class="prov-card p-4" onclick="document.getElementById(\\'fProv\\').value=\\''+p.prov+'\\';refreshDash()" style="background:'+hdr+',#fff;border-top:3px solid '+color+'"><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-gray-800">'+p.prov+'</h4><span class="text-xs text-gray-500 font-medium">ส่ง '+p.cnt+'/'+p.total+'</span></div><div class="flex items-baseline gap-2 mb-1"><span class="num text-3xl font-black" style="color:'+color+'">'+(p.cnt>0?p.avg.toFixed(1):'-')+'</span><span class="text-base text-gray-500">%</span><span class="text-xs ml-auto">'+dStr+'</span></div>'+distBar+'<div class="flex flex-wrap gap-1 mt-2">'+chips.join('')+'</div><div class="mt-3 space-y-1 text-xs">'+(p.topH?'<div class="text-emerald-700">\ud83c\udfc6 สูงสุด: <span class="font-semibold">'+esc(p.topH.name)+'</span> '+p.topPct.toFixed(1)+'%</div>':'')+(p.bottomH&&p.bottomH!==p.topH?'<div class="text-gray-600">\ud83d\udccd ต่ำสุด: <span class="font-semibold">'+esc(p.bottomH.name)+'</span> '+p.botPct.toFixed(1)+'%</div>':'')+(p.watchCnt?'<div class="text-amber-700 font-semibold">\u26a0 ต้องติดตาม '+p.watchCnt+' รพ.</div>':'')+'</div></div>';
+  }).join('');
+}
+
+// ==================== HEATMAP (v5.0) ====================
+function heatClass(pct){
+  if(pct>=95)return 'heat-95plus';
+  if(pct>=90)return 'heat-90';
+  if(pct>=80)return 'heat-80';
+  if(pct>=70)return 'heat-70';
+  if(pct>=60)return 'heat-60';
+  return 'heat-below';
+}
+function renderHeatmap(allHosp,scoreMap){
+  const wrap=document.getElementById('heatmapWrap');
+  if(!wrap)return;
+  const cats=['วางแผน','เวชระเบียน','จัดเก็บ','แผนธุรกิจ','PP Fee','ควบคุมจ่าย'];
+  const provData=PROVS.map(prov=>{
+    const pvH=allHosp.filter(h=>h.province===prov);
+    const sums=[0,0,0,0,0,0];let cnt=0;let totWp=0,totCnt=0;
+    pvH.forEach(h=>{
+      const s=scoreMap[String(h.code)];if(!s)return;
+      const cached=getItemCached(h.code,s.round||'',s);
+      if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{sums[i]+=c.pct;});cnt++;}
+      const wp=Number(s.wpct||0);if(wp>0){totWp+=wp;totCnt++;}
+    });
+    const cells=cnt>0?sums.map(s=>s/cnt):[0,0,0,0,0,0];
+    const overall=totCnt>0?totWp/totCnt:0;
+    return{prov,cells,overall,cnt};
+  }).sort((a,b)=>b.overall-a.overall);
+  let html='<table class="w-full" style="border-collapse:separate;border-spacing:4px"><thead><tr><th class="text-left p-2 text-xs text-gray-500 font-semibold">จังหวัด</th>';
+  cats.forEach(c=>{html+='<th class="p-2 text-xs text-gray-500 font-semibold text-center">'+c+'</th>';});
+  html+='<th class="p-2 text-xs text-gray-500 font-semibold text-center">รวม</th></tr></thead><tbody>';
+  provData.forEach(p=>{
+    html+='<tr><td class="p-1 font-semibold text-gray-700 text-sm whitespace-nowrap">'+p.prov+'</td>';
+    p.cells.forEach((v,i)=>{
+      html+='<td><div class="heat-cell '+heatClass(v)+'" title="'+cats[i]+': '+v.toFixed(1)+'%">'+(p.cnt>0?Math.round(v):'-')+'</div></td>';
+    });
+    html+='<td><div class="heat-cell '+heatClass(p.overall)+' font-black" title="รวม: '+p.overall.toFixed(1)+'%">'+(p.cnt>0?p.overall.toFixed(0):'-')+'</div></td></tr>';
+  });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+  const insight=document.getElementById('heatmapInsight');
+  if(insight){
+    const allCells=[];
+    provData.forEach(p=>{if(p.cnt>0)p.cells.forEach((v,i)=>allCells.push({prov:p.prov,cat:cats[i],v}));});
+    if(!allCells.length){insight.textContent='\u2014 ไม่มีข้อมูล';return;}
+    const min=allCells.reduce((a,b)=>b.v<a.v?b:a);
+    const max=allCells.reduce((a,b)=>b.v>a.v?b:a);
+    insight.innerHTML='\ud83d\udca1 หมวดอ่อนสุด: <span class="font-bold text-red-700">'+min.cat+' ('+min.prov+' '+min.v.toFixed(1)+'%)</span> \u00b7 แข็งสุด: <span class="font-bold text-emerald-700">'+max.cat+' ('+max.prov+' '+max.v.toFixed(1)+'%)</span>';
+  }
+}
+
+// ==================== RADAR OVERLAY (v5.0) ====================
+let chRadarProv=null;
+function renderRadarProv(allHosp,scoreMap){
+  const el=document.getElementById('cRadarDash');if(!el)return;
+  const ctx=el.getContext('2d');
+  if(window.chRD){window.chRD.destroy();window.chRD=null;}
+  if(chRadarProv){chRadarProv.destroy();chRadarProv=null;}
+  const datasets=PROVS.map(prov=>{
+    const pvH=allHosp.filter(h=>h.province===prov);
+    const sums=[0,0,0,0,0,0];let cnt=0;
+    pvH.forEach(h=>{
+      const s=scoreMap[String(h.code)];if(!s)return;
+      const cached=getItemCached(h.code,s.round||'',s);
+      if(cached){const cs=calcCatScores(cached,h.level);cs.categories.forEach((c,i)=>{sums[i]+=c.pct;});cnt++;}
+    });
+    const data=cnt>0?sums.map(s=>s/cnt):[0,0,0,0,0,0];
+    const col=PROV_COLORS_V5[prov]||'#6366f1';
+    return{label:prov,data,backgroundColor:col+'22',borderColor:col,borderWidth:2,pointBackgroundColor:col,pointRadius:3};
+  });
+  chRadarProv=new Chart(ctx,{type:'radar',data:{labels:CAT_LABELS,datasets},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},scales:{r:{min:0,max:100,ticks:{stepSize:20,font:{size:9}},pointLabels:{font:{size:10}}}},plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}}}});
+}
+function renderDonutLegend(c){
+  const el=document.getElementById('donutLegend');if(!el)return;
+  const labels=[['ดีเยี่ยม (A)','#10b981',c[0],'A'],['ดี (B)','#3b82f6',c[1],'B'],['พอใช้ (C)','#f59e0b',c[2],'C'],['ต้องปรับปรุง (D)','#ef4444',c[3],'D']];
+  el.innerHTML=labels.map(l=>'<div class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded" onclick="filterByGrade(\\''+l[3]+'\\')"><span style="width:10px;height:10px;border-radius:3px;background:'+l[1]+';display:inline-block"></span><span class="text-gray-600">'+l[0]+'</span><span class="num font-bold ml-auto">'+l[2]+'</span></div>').join('');
 }
 
 // ==================== DETAIL ====================
@@ -1615,7 +2219,7 @@ async function saveAssess(){
   if(existIdx>=0)AS[existIdx]=newEntry;else AS.push(newEntry);
   // Also try refreshing from server (non-blocking)
   gAPI('getAllScores').then(sr=>{if(sr.success&&sr.scores&&sr.scores.length>0){
-    sr.scores.forEach(sc=>{sc.round=normRound(sc.round);if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite)||0;if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});
+    sr.scores.forEach(sc=>{sc.round=normRound(sc.round);if(sc.composite!==undefined&&sc.composite!==''&&!isNaN(Number(sc.composite)))sc.wpct=Number(sc.composite);else if(sc.wpct===undefined||sc.wpct==='')sc.wpct=0;else sc.wpct=Number(sc.wpct);sc.grade=gradeFromPct(sc.wpct);});
     const hist=processHistorical();const dd={};hist.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});sr.scores.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});AS=Object.values(dd);
   }}).catch(()=>{});
   showReport(d,cs,dm,serverOk);
@@ -1937,7 +2541,10 @@ async function doImport(){
   hideLoad();
   alert('นำเข้าสำเร็จ '+ok+'/'+impRows.length+' แถว');
   document.getElementById('importModal').classList.add('hidden');impRows=null;document.getElementById('impPrev').innerHTML='';document.getElementById('impFile').value='';
-  try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0){sr.scores.forEach(sc=>{if(sc.wpct===undefined&&sc.composite!==undefined)sc.wpct=Number(sc.composite);if(sc.wpct===undefined)sc.wpct=0;if(!sc.grade)sc.grade=gradeFromPct(sc.wpct);});AS=sr.scores.concat(processHistorical());}else AS=processHistorical();}catch(e){}
+  try{const sr=await gAPI('getAllScores');if(sr.success&&sr.scores&&sr.scores.length>0){
+    sr.scores.forEach(sc=>{sc.round=normRound(sc.round);if(sc.composite!==undefined&&sc.composite!==''&&!isNaN(Number(sc.composite)))sc.wpct=Number(sc.composite);else if(sc.wpct===undefined||sc.wpct==='')sc.wpct=0;else sc.wpct=Number(sc.wpct);sc.grade=gradeFromPct(sc.wpct);});
+    const hist=processHistorical();const dd={};hist.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});sr.scores.forEach(s=>{dd[String(s.hospital_code)+'_'+s.round]=s;});AS=Object.values(dd);
+  }else AS=processHistorical();}catch(e){}
   refreshDash();
 }
 <\/script>
